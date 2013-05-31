@@ -22,20 +22,17 @@
 			android:paddingLeft="10dip"
             android:paddingRight="3dip">
 
-        <TextView
+        <github.daneren2005.dsub.view.ScrollingTextView
                 android:id="@+id/album_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceMedium"
-                android:singleLine="true"
-                android:ellipsize="marquee"/>
+                android:textAppearance="?android:attr/textAppearanceMedium"/>
 
-        <TextView
+        <github.daneren2005.dsub.view.ScrollingTextView
                 android:id="@+id/album_artist"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceSmall"
-                android:singleLine="true"/>
+                android:textAppearance="?android:attr/textAppearanceSmall"/>
 
     </LinearLayout>
 	
