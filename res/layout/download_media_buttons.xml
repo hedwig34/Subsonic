@@ -14,7 +14,7 @@
             android:layout_centerVertical="true"
             />
 
-    <github.daneren2005.dsub.view.AutoRepeatButton
+    <com.hedwig34.dsub.view.AutoRepeatButton
             style="@style/PlaybackControl"
             android:id="@+id/download_previous"
             android:src="?attr/media_button_backward"
@@ -43,7 +43,7 @@
             android:layout_centerInParent="true"
             />
 
-    <github.daneren2005.dsub.view.AutoRepeatButton
+    <com.hedwig34.dsub.view.AutoRepeatButton
             style="@style/PlaybackControl"
             android:id="@+id/download_next"
             android:src="?attr/media_button_forward"
