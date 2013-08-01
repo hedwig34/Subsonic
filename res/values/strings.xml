@@ -35,8 +35,8 @@
     <string name="main.welcome_text">Welcome to DSub! The app is currently configured to use the Subsonic demo server. After you\'ve
         set up your personal server (available from <b>subsonic.org</b>), please go to <b>Settings</b> and change the configuration to connect to it.</string>
 	<string name="main.about_title">About DSub</string>
-	<string name="main.about_text">Author: Scott Jackson
-		\nEmail: daneren2005@gmail.com
+	<string name="main.about_text">hedwig34 version
+        \nBased on source by Scott Jackson and Sindre Mehus
 		\nVersion: %1$s
 		\nUsed Space: %2$s of %3$s
 		\nAvailable Space: %4$s of %5$s</string>
@@ -290,7 +290,7 @@
     <string name="settings.search_history_cleared">Search history cleared</string>
     <string name="settings.other_title">Other settings</string>
     <string name="settings.scrobble_title">Scrobble to Last.fm</string>
-    <string name="settings.scrobble_summary">Remember to set up your Last.fm user and password on the DSub server</string>
+    <string name="settings.scrobble_summary">Remember to set up your Last.fm user and password on the Subsonic server</string>
     <string name="settings.hide_media_title">Hide from other</string>
     <string name="settings.hide_media_summary">Hide music files from other apps.</string>
     <string name="settings.hide_media_toast">Takes effect next time Android scans your phone for music.</string>

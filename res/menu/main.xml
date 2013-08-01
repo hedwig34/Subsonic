@@ -22,10 +22,10 @@
 		android:icon="@drawable/action_help"
 		android:title="@string/menu.about"/>
 		
-	<item 
+	<!--<item 
 		android:id="@+id/menu_log"
 		android:title="@string/menu.log"/>
-
+-->
 	<item 
 		android:id="@+id/menu_changelog"
 		android:title="@string/changelog_full_title"/>

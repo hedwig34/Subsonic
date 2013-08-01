@@ -78,9 +78,9 @@ public class MainFragment extends SubsonicFragment {
 		}
 
 		switch (item.getItemId()) {
-			case R.id.menu_log:
-				getLogs();
-				return true;
+//			case R.id.menu_log:
+//				getLogs();
+//				return true;
 			case R.id.menu_about:
 				showAboutDialog();
 				return true;
