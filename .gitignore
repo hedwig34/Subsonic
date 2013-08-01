@@ -6,3 +6,5 @@ private/*
 nbandroid/*
 .idea
 subsonic-android.iml
+.DS_Store
+releases/*
