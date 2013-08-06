@@ -24,6 +24,7 @@ import com.hedwig34.dsub.audiofx.EqualizerController;
 import com.hedwig34.dsub.audiofx.VisualizerController;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.domain.PlayerState;
+import com.hedwig34.dsub.domain.RemoteControlState;
 import com.hedwig34.dsub.domain.RepeatMode;
 
 /**
@@ -121,11 +122,11 @@ public interface DownloadService {
 
     VisualizerController getVisualizerController();
 
-    boolean isJukeboxEnabled();
+    boolean isRemoteEnabled();
 
-    void setJukeboxEnabled(boolean b);
+    void setRemoteEnabled(RemoteControlState newState);
 
-    void adjustJukeboxVolume(boolean up);
+    void setRemoteVolume(boolean up);
 	
 	void setSleepTimerDuration(int duration);
 	

@@ -29,6 +29,7 @@ import android.widget.Toast;
 import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.domain.JukeboxStatus;
 import com.hedwig34.dsub.domain.PlayerState;
+import com.hedwig34.dsub.domain.RemoteControlState;
 import com.hedwig34.dsub.service.parser.SubsonicRESTException;
 import com.hedwig34.dsub.util.Util;
 
@@ -145,7 +146,7 @@ public class JukeboxService {
                 Util.toast(downloadService, resourceId, false);
             }
         });
-        downloadService.setJukeboxEnabled(false);
+        downloadService.setRemoteEnabled(RemoteControlState.LOCAL);
     }
 
     public void updatePlaylist() {
