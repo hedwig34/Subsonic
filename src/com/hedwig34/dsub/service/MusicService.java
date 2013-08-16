@@ -27,13 +27,12 @@ import android.graphics.Bitmap;
 import com.hedwig34.dsub.domain.ChatMessage;
 import com.hedwig34.dsub.domain.Genre;
 import com.hedwig34.dsub.domain.Indexes;
-import com.hedwig34.dsub.domain.JukeboxStatus;
+import com.hedwig34.dsub.domain.RemoteStatus;
 import com.hedwig34.dsub.domain.Lyrics;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.domain.MusicFolder;
 import com.hedwig34.dsub.domain.Playlist;
 import com.hedwig34.dsub.domain.PodcastChannel;
-import com.hedwig34.dsub.domain.PodcastEpisode;
 import com.hedwig34.dsub.domain.SearchCritera;
 import com.hedwig34.dsub.domain.SearchResult;
 import com.hedwig34.dsub.domain.Share;
@@ -98,17 +97,17 @@ public interface MusicService {
 	
 	String getHlsUrl(String id, int bitRate, Context context) throws Exception;
 
-    JukeboxStatus updateJukeboxPlaylist(List<String> ids, Context context, ProgressListener progressListener) throws Exception;
+    RemoteStatus updateJukeboxPlaylist(List<String> ids, Context context, ProgressListener progressListener) throws Exception;
 
-    JukeboxStatus skipJukebox(int index, int offsetSeconds, Context context, ProgressListener progressListener) throws Exception;
+    RemoteStatus skipJukebox(int index, int offsetSeconds, Context context, ProgressListener progressListener) throws Exception;
 
-    JukeboxStatus stopJukebox(Context context, ProgressListener progressListener) throws Exception;
+    RemoteStatus stopJukebox(Context context, ProgressListener progressListener) throws Exception;
 
-    JukeboxStatus startJukebox(Context context, ProgressListener progressListener) throws Exception;
+    RemoteStatus startJukebox(Context context, ProgressListener progressListener) throws Exception;
 
-    JukeboxStatus getJukeboxStatus(Context context, ProgressListener progressListener) throws Exception;
+    RemoteStatus getJukeboxStatus(Context context, ProgressListener progressListener) throws Exception;
 
-    JukeboxStatus setJukeboxGain(float gain, Context context, ProgressListener progressListener) throws Exception;
+    RemoteStatus setJukeboxGain(float gain, Context context, ProgressListener progressListener) throws Exception;
     
     void setStarred(String id, boolean starred, Context context, ProgressListener progressListener) throws Exception;
 	

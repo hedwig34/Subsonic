@@ -19,14 +19,99 @@
 
 package com.hedwig34.dsub.service;
 
-public interface RemoteController {
-	void start();
-	void stop();
+import android.content.Context;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.Toast;
+
+import java.util.Iterator;
+import java.util.concurrent.LinkedBlockingQueue;
+
+import com.hedwig34.dsub.R;
+import com.hedwig34.dsub.domain.RemoteStatus;
+
+public abstract class RemoteController {
+	private static final String TAG = RemoteController.class.getSimpleName();
+	protected DownloadServiceImpl downloadService;
+	private VolumeToast volumeToast;
+
+	public abstract void start();
+	public abstract void stop();
+	public abstract void shutdown();
 	
-	void updatePlaylist();
-	void changePosition(int seconds);
-	void changeTrack(int index, DownloadFile song);
-	void setVolume(float gain);
+	public abstract void updatePlaylist();
+	public abstract void changePosition(int seconds);
+	public abstract void changeTrack(int index, DownloadFile song);
+	public abstract void setVolume(boolean up);
 	
-	int getRemotePosition();
+	public abstract int getRemotePosition();
+
+	protected abstract class RemoteTask {
+		abstract RemoteStatus execute() throws Exception;
+
+		@Override
+		public String toString() {
+			return getClass().getSimpleName();
+		}
+	}
+
+	protected static class TaskQueue {
+		private final LinkedBlockingQueue<RemoteTask> queue = new LinkedBlockingQueue<RemoteTask>();
+
+		void add(RemoteTask jukeboxTask) {
+			queue.add(jukeboxTask);
+		}
+
+		RemoteTask take() throws InterruptedException {
+			return queue.take();
+		}
+
+		void remove(Class<? extends RemoteTask> clazz) {
+			try {
+				Iterator<RemoteTask> iterator = queue.iterator();
+				while (iterator.hasNext()) {
+					RemoteTask task = iterator.next();
+					if (clazz.equals(task.getClass())) {
+						iterator.remove();
+					}
+				}
+			} catch (Throwable x) {
+				Log.w(TAG, "Failed to clean-up task queue.", x);
+			}
+		}
+
+		void clear() {
+			queue.clear();
+		}
+	}
+	
+	protected VolumeToast getVolumeToast() {
+		if(volumeToast == null) {
+			volumeToast = new VolumeToast(downloadService);
+		}
+		return volumeToast;
+	}
+	
+	protected static class VolumeToast extends Toast {
+		private final ProgressBar progressBar;
+		
+		public VolumeToast(Context context) {
+			super(context);
+			setDuration(Toast.LENGTH_SHORT);
+			LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+			View view = inflater.inflate(R.layout.jukebox_volume, null);
+			progressBar = (ProgressBar) view.findViewById(R.id.jukebox_volume_progress_bar);
+			
+			setView(view);
+			setGravity(Gravity.TOP, 0, 0);
+		}
+		
+		public void setVolume(float volume) {
+			progressBar.setProgress(Math.round(100 * volume));
+			show();
+		}
+	}
 }

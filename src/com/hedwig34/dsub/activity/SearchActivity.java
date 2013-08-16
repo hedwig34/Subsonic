@@ -23,9 +23,10 @@ import com.hedwig34.dsub.R;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MenuItem;
+
 import com.hedwig34.dsub.fragments.SearchFragment;
 import com.hedwig34.dsub.util.Constants;
-import com.actionbarsherlock.view.MenuItem;
 
 public class SearchActivity extends SubsonicActivity {
 	private static final String TAG = SearchActivity.class.getSimpleName();

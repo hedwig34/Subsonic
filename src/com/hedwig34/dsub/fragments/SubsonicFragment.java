@@ -29,6 +29,7 @@ import android.content.pm.ResolveInfo;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.MenuInflater;
@@ -38,7 +39,6 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
-import com.actionbarsherlock.app.SherlockFragment;
 import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.activity.DownloadActivity;
 import com.hedwig34.dsub.activity.HelpActivity;
@@ -72,10 +72,11 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class SubsonicFragment extends SherlockFragment {
+public class SubsonicFragment extends Fragment {
 	private static final String TAG = SubsonicFragment.class.getSimpleName();
-	private static int internalID = Integer.MAX_VALUE;
+	private static final AtomicInteger nextGeneratedId = new AtomicInteger(1);
 	private static int TAG_INC = 10;
 	private int tag;
 	
@@ -114,7 +115,7 @@ public class SubsonicFragment extends SherlockFragment {
 	}
 
 	@Override
-	public boolean onOptionsItemSelected(com.actionbarsherlock.view.MenuItem item) {
+	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.menu_refresh:
 				refresh(true);
@@ -282,8 +283,15 @@ public class SubsonicFragment extends SherlockFragment {
 	}
 	
 	protected int getNewId() {
-		internalID--;
-		return internalID;
+		for (;;) {
+	        final int result = nextGeneratedId.get();
+	        // aapt-generated IDs have the high byte nonzero; clamp to the range under that.
+	        int newValue = result + 1;
+	        if (newValue > 0x00FFFFFF) newValue = 1; // Roll over to 1, not 0.
+	        if (nextGeneratedId.compareAndSet(result, newValue)) {
+	            return result;
+	        }
+	    }
 	}
 	public int getRootId() {
 		return rootView.getId();

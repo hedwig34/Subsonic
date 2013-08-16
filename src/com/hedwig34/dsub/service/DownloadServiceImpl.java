@@ -99,7 +99,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
     private final LruCache<MusicDirectory.Entry, DownloadFile> downloadFileCache = new LruCache<MusicDirectory.Entry, DownloadFile>(100);
     private final List<DownloadFile> cleanupCandidates = new ArrayList<DownloadFile>();
     private final Scrobbler scrobbler = new Scrobbler();
-    private final JukeboxService jukeboxService = new JukeboxService(this);
+	private RemoteController remoteController;
     private DownloadFile currentPlaying;
 	private DownloadFile nextPlaying;
     private DownloadFile currentDownloading;
@@ -252,6 +252,10 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 		if(nextPlayingTask != null) {
 			nextPlayingTask.cancel();
 		}
+		if(remoteController != null) {
+			remoteController.stop();
+			remoteController.shutdown();
+		}
 		Util.hidePlayingNotification(this, this, handler);
     }
 
@@ -324,12 +328,16 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 
     private void updateJukeboxPlaylist() {
         if (remoteState != RemoteControlState.LOCAL) {
-            jukeboxService.updatePlaylist();
+            remoteController.updatePlaylist();
         }
     }
 
     public void restore(List<MusicDirectory.Entry> songs, int currentPlayingIndex, int currentPlayingPosition) {
 		SharedPreferences prefs = Util.getPreferences(this);
+		remoteState = RemoteControlState.values()[prefs.getInt(Constants.PREFERENCES_KEY_CONTROL_MODE, 0)];
+		if(remoteState != RemoteControlState.LOCAL) {
+			setRemoteState(remoteState);
+		}
 		boolean startShufflePlay = prefs.getBoolean(Constants.PREFERENCES_KEY_SHUFFLE_MODE, false);
         download(songs, false, false, false, false);
 		if(startShufflePlay) {
@@ -344,7 +352,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
         	}
         	
             play(currentPlayingIndex, false);
-            if (currentPlaying != null && currentPlaying.isCompleteFileAvailable()) {
+            if (currentPlaying != null && currentPlaying.isCompleteFileAvailable() && remoteState == RemoteControlState.LOCAL) {
                 doPlay(currentPlaying, currentPlayingPosition, autoPlayStart);
             }
 			autoPlayStart = false;
@@ -419,17 +427,26 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 
     @Override
     public synchronized DownloadFile forSong(MusicDirectory.Entry song) {
+    	DownloadFile returnFile = null;
         for (DownloadFile downloadFile : downloadList) {
-            if (downloadFile.getSong().equals(song) &&
-					((downloadFile.isDownloading() && !downloadFile.isDownloadCancelled() && downloadFile.getPartialFile().exists())
-					|| downloadFile.isWorkDone())) {
-                return downloadFile;
+            if (downloadFile.getSong().equals(song)) {
+            	if(((downloadFile.isDownloading() && !downloadFile.isDownloadCancelled() && downloadFile.getPartialFile().exists()) || downloadFile.isWorkDone())) {
+            		// If downloading, return immediately
+                	return downloadFile;
+				} else {
+					// Otherwise, check to make sure there isn't a background download going on first
+					returnFile = downloadFile;
+				}
             }
         }
 		for (DownloadFile downloadFile : backgroundDownloadList) {
             if (downloadFile.getSong().equals(song)) {
                 return downloadFile;
             }
+        }
+        
+        if(returnFile != null) {
+        	return returnFile;
         }
 
         DownloadFile downloadFile = downloadFileCache.get(song);
@@ -654,14 +671,16 @@ public class DownloadServiceImpl extends Service implements DownloadService {
             setCurrentPlaying(index, start);
             if (start) {
                 if (remoteState != RemoteControlState.LOCAL) {
-                    jukeboxService.skip(getCurrentPlayingIndex(), 0);
+					remoteController.changeTrack(index, downloadList.get(index));
                     setPlayerState(STARTED);
                 } else {
                     bufferAndPlay();
                 }
             }
-			checkDownloads();
-			setNextPlaying();
+			if (remoteState == RemoteControlState.LOCAL) {
+				checkDownloads();
+				setNextPlaying();
+			}
         }
     }
 	private synchronized void playNext() {
@@ -714,7 +733,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
     public synchronized void seekTo(int position) {
         try {
             if (remoteState != RemoteControlState.LOCAL) {
-                jukeboxService.skip(getCurrentPlayingIndex(), position / 1000);
+				remoteController.changePosition(position / 1000);
             } else {
                 mediaPlayer.seekTo(position);
 				cachedPosition = position;
@@ -771,7 +790,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
         try {
             if (playerState == STARTED) {
                 if (remoteState != RemoteControlState.LOCAL) {
-                    jukeboxService.stop();
+					remoteController.stop();
                 } else {
                     mediaPlayer.pause();
                 }
@@ -787,7 +806,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 		try {
 			if (playerState == STARTED) {
                 if (remoteState != RemoteControlState.LOCAL) {
-                    jukeboxService.stop();
+					remoteController.stop();
                 } else {
                     mediaPlayer.pause();
                 }
@@ -804,7 +823,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
     public synchronized void start() {
         try {
             if (remoteState != RemoteControlState.LOCAL) {
-                jukeboxService.start();
+				remoteController.start();
             } else {
                 mediaPlayer.start();
 			}
@@ -836,7 +855,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
                 return 0;
             }
             if (remoteState != RemoteControlState.LOCAL) {
-				return jukeboxService.getPositionSeconds() * 1000;
+				return remoteController.getRemotePosition() * 1000;
             } else {
                 return cachedPosition;
             }
@@ -1015,21 +1034,42 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 
     @Override
     public void setRemoteEnabled(RemoteControlState newState) {
-		remoteState = newState;
-        jukeboxService.setEnabled(remoteState != RemoteControlState.LOCAL);
-        if (remoteState != RemoteControlState.LOCAL) {
-            reset();
-            
-            // Cancel current download, if necessary.
-            if (currentDownloading != null) {
-                currentDownloading.cancelDownload();
-            }
-        }
+		setRemoteState(newState);
+        
+    	SharedPreferences.Editor editor = Util.getPreferences(this).edit();
+		editor.putInt(Constants.PREFERENCES_KEY_CONTROL_MODE, newState.getValue());
+		editor.commit();
     }
+	private void setRemoteState(RemoteControlState newState) {
+		if(remoteController != null) {
+			remoteController.stop();
+			setPlayerState(PlayerState.IDLE);
+			remoteController.shutdown();
+			remoteController = null;
+		}
+
+		remoteState = newState;
+		switch(newState) {
+			case JUKEBOX_SERVER:
+				remoteController = new JukeboxController(this, handler);
+				break;
+			case LOCAL: default:
+				break;
+		}
+
+		if (remoteState != RemoteControlState.LOCAL) {
+			reset();
+
+			// Cancel current download, if necessary.
+			if (currentDownloading != null) {
+				currentDownloading.cancelDownload();
+			}
+		}
+	}
 
     @Override
     public void setRemoteVolume(boolean up) {
-        jukeboxService.adjustVolume(up);
+		remoteController.setVolume(up);
     }
 
     private synchronized void bufferAndPlay() {

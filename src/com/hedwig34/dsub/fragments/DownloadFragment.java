@@ -20,6 +20,9 @@ import android.view.Display;
 import android.view.GestureDetector;
 import android.view.GestureDetector.OnGestureListener;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -36,9 +39,6 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.ViewFlipper;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuItem;
-import com.actionbarsherlock.view.MenuInflater;
 import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.domain.PlayerState;
@@ -618,7 +618,7 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 					context.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 					getDownloadService().setKeepScreenOn(true);
 				}
-				context.invalidateOptionsMenu();
+				context.supportInvalidateOptionsMenu();
 				return true;
 			case R.id.menu_shuffle:
 				new SilentBackgroundTask<Void>(context) {
@@ -646,12 +646,12 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 				return true;
 			case R.id.menu_toggle_now_playing:
 				toggleNowPlaying();
-				context.invalidateOptionsMenu();
+				context.supportInvalidateOptionsMenu();
 				return true;
 			case R.id.menu_toggle_timer:
 				if(getDownloadService().getSleepTimer()) {
 					getDownloadService().stopSleepTimer();
-					context.invalidateOptionsMenu();
+					context.supportInvalidateOptionsMenu();
 				} else {
 					startTimer();
 				}
@@ -840,7 +840,7 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 
 					getDownloadService().setSleepTimerDuration(Integer.parseInt(length));
 					getDownloadService().startSleepTimer();
-					context.invalidateOptionsMenu();
+					context.supportInvalidateOptionsMenu();
 				}
 			})
 			.setNegativeButton(R.string.common_cancel, null);

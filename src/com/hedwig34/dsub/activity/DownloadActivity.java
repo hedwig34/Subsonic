@@ -20,6 +20,7 @@ package com.hedwig34.dsub.activity;
 
 import com.hedwig34.dsub.R;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.MotionEvent;
 import com.hedwig34.dsub.fragments.DownloadFragment;
 import android.app.Dialog;
@@ -33,7 +34,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.util.Log;
 import android.view.View;
-import com.actionbarsherlock.view.MenuItem;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.service.DownloadFile;
 import com.hedwig34.dsub.service.MusicService;

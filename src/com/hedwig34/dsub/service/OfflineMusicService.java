@@ -37,13 +37,12 @@ import android.util.Log;
 import com.hedwig34.dsub.domain.Artist;
 import com.hedwig34.dsub.domain.Genre;
 import com.hedwig34.dsub.domain.Indexes;
-import com.hedwig34.dsub.domain.JukeboxStatus;
+import com.hedwig34.dsub.domain.RemoteStatus;
 import com.hedwig34.dsub.domain.Lyrics;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.domain.MusicFolder;
 import com.hedwig34.dsub.domain.Playlist;
 import com.hedwig34.dsub.domain.PodcastChannel;
-import com.hedwig34.dsub.domain.PodcastEpisode;
 import com.hedwig34.dsub.domain.SearchCritera;
 import com.hedwig34.dsub.domain.SearchResult;
 import com.hedwig34.dsub.util.Constants;
@@ -523,32 +522,32 @@ public class OfflineMusicService extends RESTMusicService {
 	}
 
     @Override
-    public JukeboxStatus updateJukeboxPlaylist(List<String> ids, Context context, ProgressListener progressListener) throws Exception {
+    public RemoteStatus updateJukeboxPlaylist(List<String> ids, Context context, ProgressListener progressListener) throws Exception {
         throw new OfflineException("Jukebox not available in offline mode");
     }
 
     @Override
-    public JukeboxStatus skipJukebox(int index, int offsetSeconds, Context context, ProgressListener progressListener) throws Exception {
+    public RemoteStatus skipJukebox(int index, int offsetSeconds, Context context, ProgressListener progressListener) throws Exception {
         throw new OfflineException("Jukebox not available in offline mode");
     }
 
     @Override
-    public JukeboxStatus stopJukebox(Context context, ProgressListener progressListener) throws Exception {
+    public RemoteStatus stopJukebox(Context context, ProgressListener progressListener) throws Exception {
         throw new OfflineException("Jukebox not available in offline mode");
     }
 
     @Override
-    public JukeboxStatus startJukebox(Context context, ProgressListener progressListener) throws Exception {
+    public RemoteStatus startJukebox(Context context, ProgressListener progressListener) throws Exception {
         throw new OfflineException("Jukebox not available in offline mode");
     }
 
     @Override
-    public JukeboxStatus getJukeboxStatus(Context context, ProgressListener progressListener) throws Exception {
+    public RemoteStatus getJukeboxStatus(Context context, ProgressListener progressListener) throws Exception {
         throw new OfflineException("Jukebox not available in offline mode");
     }
 
     @Override
-    public JukeboxStatus setJukeboxGain(float gain, Context context, ProgressListener progressListener) throws Exception {
+    public RemoteStatus setJukeboxGain(float gain, Context context, ProgressListener progressListener) throws Exception {
         throw new OfflineException("Jukebox not available in offline mode");
     }
 	
