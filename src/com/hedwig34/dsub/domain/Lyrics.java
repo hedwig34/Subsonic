@@ -18,12 +18,14 @@
  */
 package com.hedwig34.dsub.domain;
 
+import java.io.Serializable;
+
 /**
  * Song lyrics.
  *
  * @author Sindre Mehus
  */
-public class Lyrics {
+public class Lyrics  implements Serializable {
 
     private String artist;
     private String title;

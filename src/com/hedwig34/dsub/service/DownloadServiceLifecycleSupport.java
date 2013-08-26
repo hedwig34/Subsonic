@@ -34,6 +34,8 @@ import android.content.IntentFilter;
 import android.media.RemoteControlClient;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -53,6 +55,8 @@ public class DownloadServiceLifecycleSupport {
     private static final String FILENAME_DOWNLOADS_SER = "downloadstate.ser";
 
     private final DownloadServiceImpl downloadService;
+    private Looper eventLooper;
+    private Handler eventHandler;
     private ScheduledExecutorService executorService;
     private BroadcastReceiver headsetEventReceiver;
     private BroadcastReceiver ejectEventReceiver;
@@ -106,6 +110,26 @@ public class DownloadServiceLifecycleSupport {
 
         executorService = Executors.newSingleThreadScheduledExecutor();
         executorService.scheduleWithFixedDelay(downloadChecker, 5, 5, TimeUnit.SECONDS);
+        
+		new Thread(new Runnable() {
+			@Override
+			public void run() {
+				Looper.prepare();
+				eventLooper = Looper.myLooper();
+				eventHandler = new Handler(eventLooper);
+
+				// Deserialize queue before starting looper
+				try {
+					lock.lock();
+					deserializeDownloadQueueNow();
+					setup.set(true);
+				} finally {
+					lock.unlock();
+				}
+
+				Looper.loop();
+			}
+		}).start();
 
         // Pause when headset is unplugged.
         headsetEventReceiver = new BroadcastReceiver() {
@@ -113,9 +137,14 @@ public class DownloadServiceLifecycleSupport {
             public void onReceive(Context context, Intent intent) {
                 Log.i(TAG, "Headset event for: " + intent.getExtras().get("name"));
                 if (intent.getExtras().getInt("state") == 0) {
-					if(!downloadService.isRemoteEnabled()) {
-						downloadService.pause();
-					}
+                	eventHandler.post(new Runnable() {
+						@Override
+						public void run() {
+							if(!downloadService.isRemoteEnabled()) {
+								downloadService.pause();
+							}
+						}
+                	});
                 }
             }
         };
@@ -157,22 +186,30 @@ public class DownloadServiceLifecycleSupport {
         commandFilter.addAction(DownloadServiceImpl.CMD_NEXT);
         downloadService.registerReceiver(intentReceiver, commandFilter);
 
-        deserializeDownloadQueue();
-
         new CacheCleaner(downloadService, downloadService).clean();
     }
 
     public void onStart(Intent intent) {
         if (intent != null && intent.getExtras() != null) {
-            KeyEvent event = (KeyEvent) intent.getExtras().get(Intent.EXTRA_KEY_EVENT);
+            final KeyEvent event = (KeyEvent) intent.getExtras().get(Intent.EXTRA_KEY_EVENT);
             if (event != null) {
-                handleKeyEvent(event);
+				eventHandler.post(new Runnable() {
+					@Override
+					public void run() {
+						if(!setup.get()) {
+							lock.lock();
+							lock.unlock();
+						}
+						handleKeyEvent(event);
+					}
+				});
             }
         }
     }
 
     public void onDestroy() {
         executorService.shutdown();
+        eventLooper.quit();
         serializeDownloadQueueNow();
         downloadService.clear(false);
         downloadService.unregisterReceiver(ejectEventReceiver);
@@ -192,11 +229,18 @@ public class DownloadServiceLifecycleSupport {
     		return;
     	}
     	
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			new SerializeTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-		} else {
-			new SerializeTask().execute();
-		}
+		eventHandler.post(new Runnable() {
+			@Override
+			public void run() {
+				if(lock.tryLock()) {
+					try {
+						serializeDownloadQueueNow();
+					} finally {
+						lock.unlock();
+					}
+				}
+			}
+    	});
     }
     
     public void serializeDownloadQueueNow() {
@@ -212,13 +256,6 @@ public class DownloadServiceLifecycleSupport {
 		FileUtil.serialize(downloadService, state, FILENAME_DOWNLOADS_SER);
     }
 
-	private void deserializeDownloadQueue() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-			new DeserializeTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-		} else {
-			new DeserializeTask().execute();
-		}
-	}
     private void deserializeDownloadQueueNow() {
        State state = FileUtil.deserialize(downloadService, FILENAME_DOWNLOADS_SER);
         if (state == null) {
@@ -294,24 +331,29 @@ public class DownloadServiceLifecycleSupport {
         private boolean resumeAfterCall;
 
         @Override
-        public void onCallStateChanged(int state, String incomingNumber) {
-            switch (state) {
-                case TelephonyManager.CALL_STATE_RINGING:
-                case TelephonyManager.CALL_STATE_OFFHOOK:
-                    if (downloadService.getPlayerState() == PlayerState.STARTED && !downloadService.isRemoteEnabled()) {
-                        resumeAfterCall = true;
-                        downloadService.pause();
-                    }
-                    break;
-                case TelephonyManager.CALL_STATE_IDLE:
-                    if (resumeAfterCall) {
-                        resumeAfterCall = false;
-                        downloadService.start();
-                    }
-                    break;
-                default:
-                    break;
-            }
+        public void onCallStateChanged(final int state, String incomingNumber) {
+        	eventHandler.post(new Runnable() {
+				@Override
+				public void run() {
+					switch (state) {
+		                case TelephonyManager.CALL_STATE_RINGING:
+		                case TelephonyManager.CALL_STATE_OFFHOOK:
+		                    if (downloadService.getPlayerState() == PlayerState.STARTED && !downloadService.isRemoteEnabled()) {
+		                        resumeAfterCall = true;
+		                        downloadService.pause();
+		                    }
+		                    break;
+		                case TelephonyManager.CALL_STATE_IDLE:
+		                    if (resumeAfterCall) {
+		                        resumeAfterCall = false;
+		                        downloadService.start();
+		                    }
+		                    break;
+		                default:
+		                    break;
+		            }
+				}
+        	});
         }
     }
 
@@ -322,31 +364,4 @@ public class DownloadServiceLifecycleSupport {
         private int currentPlayingIndex;
         private int currentPlayingPosition;
     }
-	
-	private class SerializeTask extends AsyncTask<Void, Void, Void> {
-		@Override
-		protected Void doInBackground(Void... params) {
-			if(lock.tryLock()) {
-				try {
-					serializeDownloadQueueNow();
-				} finally {
-					lock.unlock();
-				}
-			}
-			return null;
-		}
-	}
-	private class DeserializeTask extends AsyncTask<Void, Void, Void> {
-		@Override
-		protected Void doInBackground(Void... params) {
-			try {
-				lock.lock();
-				deserializeDownloadQueueNow();
-				setup.set(true);
-			} finally {
-				lock.unlock();
-			}
-			return null;
-		}
-	}
 }
