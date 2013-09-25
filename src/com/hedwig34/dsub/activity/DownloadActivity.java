@@ -38,6 +38,7 @@ import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.service.DownloadFile;
 import com.hedwig34.dsub.service.MusicService;
 import com.hedwig34.dsub.service.MusicServiceFactory;
+import com.hedwig34.dsub.util.Constants;
 import com.hedwig34.dsub.util.SilentBackgroundTask;
 import com.hedwig34.dsub.util.Util;
 import java.util.LinkedList;
@@ -57,6 +58,11 @@ public class DownloadActivity extends SubsonicActivity {
 
 		if (findViewById(R.id.download_container) != null && savedInstanceState == null) {
 			currentFragment = new DownloadFragment();
+			if(getIntent().hasExtra(Constants.INTENT_EXTRA_NAME_DOWNLOAD_VIEW)) {
+				Bundle args = new Bundle();
+				args.putBoolean(Constants.INTENT_EXTRA_NAME_DOWNLOAD_VIEW, true);
+				currentFragment.setArguments(args);
+			}
 			currentFragment.setPrimaryFragment(true);
 			getSupportFragmentManager().beginTransaction().add(R.id.download_container, currentFragment, currentFragment.getSupportTag() + "").commit();
 		}

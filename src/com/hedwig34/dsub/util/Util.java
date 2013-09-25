@@ -22,6 +22,7 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
@@ -40,6 +41,7 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
+import android.support.v4.app.NotificationCompat;
 import android.text.SpannableString;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
@@ -59,6 +61,7 @@ import com.hedwig34.dsub.domain.RepeatMode;
 import com.hedwig34.dsub.domain.Version;
 import com.hedwig34.dsub.provider.DSubWidgetProvider;
 import com.hedwig34.dsub.receiver.MediaButtonIntentReceiver;
+import com.hedwig34.dsub.service.DownloadFile;
 import com.hedwig34.dsub.service.DownloadService;
 import com.hedwig34.dsub.service.DownloadServiceImpl;
 import org.apache.http.HttpEntity;
@@ -758,8 +761,8 @@ public final class Util {
         }
     }
 	
-	public static boolean isNullOrWhiteSpace(String string) { 
-		return string == null || string.isEmpty() || string.trim().isEmpty();
+	public static boolean isNullOrWhiteSpace(String string) {
+		return string == null || "".equals(string) || "".equals(string.trim());
 	}
 
     public static boolean isNetworkConnected(Context context) {
@@ -836,7 +839,7 @@ public final class Util {
         Intent notificationIntent = new Intent(context, MainActivity.class);
 		notificationIntent.putExtra(Constants.INTENT_EXTRA_NAME_DOWNLOAD, true);
 		notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        notification.contentIntent = PendingIntent.getActivity(context, 0, notificationIntent, 0);
+        notification.contentIntent = PendingIntent.getActivity(context, 0, notificationIntent, Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         
 		handler.post(new Runnable() {
 			@Override
@@ -929,6 +932,30 @@ public final class Util {
 
         // Update widget
         DSubWidgetProvider.notifyInstances(context, downloadService, false);
+    }
+    
+    public static void showDownloadingNotification(final Context context, DownloadFile file, int size) {
+    	NotificationCompat.Builder builder;
+    	builder = new NotificationCompat.Builder(context)
+    		.setSmallIcon(R.drawable.stat_notify_download)
+    		.setContentTitle("Downloading " + size + " songs")
+    		.setContentText("Current: " + file.getSong().getTitle())
+    		.setProgress(10, 5, true)
+			.setOngoing(true);
+    	
+		Intent notificationIntent = new Intent(context, MainActivity.class);
+		notificationIntent.putExtra(Constants.INTENT_EXTRA_NAME_DOWNLOAD, true);
+		notificationIntent.putExtra(Constants.INTENT_EXTRA_NAME_DOWNLOAD_VIEW, true);
+		notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+		builder.setContentIntent(PendingIntent.getActivity(context, 0, notificationIntent, Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+
+		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.notify(Constants.NOTIFICATION_ID_DOWNLOADING, builder.build());
+
+    }
+    public static void hideDownloadingNotification(final Context context) {
+		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationManager.cancel(Constants.NOTIFICATION_ID_DOWNLOADING);
     }
 
     public static void sleepQuietly(long millis) {

@@ -186,17 +186,9 @@ public class RESTMusicService implements MusicService {
     }
 
     public List<MusicFolder> getMusicFolders(boolean refresh, Context context, ProgressListener progressListener) throws Exception {
-       
-        List<MusicFolder> cachedMusicFolders = readCachedMusicFolders(context);
-        if (cachedMusicFolders != null && !refresh) {
-            return cachedMusicFolders;
-        }
-
         Reader reader = getReader(context, progressListener, "getMusicFolders", null);
         try {
-            List<MusicFolder> musicFolders = new MusicFoldersParser(context).parse(reader, progressListener);
-            writeCachedMusicFolders(context, musicFolders);
-            return musicFolders;
+            return new MusicFoldersParser(context).parse(reader, progressListener);
         } finally {
             Util.close(reader);
         }
@@ -243,7 +235,7 @@ public class RESTMusicService implements MusicService {
 
     private Indexes readCachedIndexes(Context context, String musicFolderId) {
         String filename = getCachedIndexesFilename(context, musicFolderId);
-        return FileUtil.deserialize(context, filename);
+        return FileUtil.deserialize(context, filename, Indexes.class);
     }
 
     private void writeCachedIndexes(Context context, Indexes indexes, String musicFolderId) {
@@ -254,21 +246,6 @@ public class RESTMusicService implements MusicService {
     private String getCachedIndexesFilename(Context context, String musicFolderId) {
         String s = Util.getRestUrl(context, null) + musicFolderId;
         return "indexes-" + Math.abs(s.hashCode()) + ".ser";
-    }
-
-    private ArrayList<MusicFolder> readCachedMusicFolders(Context context) {
-        String filename = getCachedMusicFoldersFilename(context);
-        return FileUtil.deserialize(context, filename);
-    }
-
-    private void writeCachedMusicFolders(Context context, List<MusicFolder> musicFolders) {
-        String filename = getCachedMusicFoldersFilename(context);
-        FileUtil.serialize(context, new ArrayList<MusicFolder>(musicFolders), filename);
-    }
-
-    private String getCachedMusicFoldersFilename(Context context) {
-        String s = Util.getRestUrl(context, null);
-        return "musicFolders-" + Math.abs(s.hashCode()) + ".ser";
     }
 
     @Override
@@ -336,7 +313,7 @@ public class RESTMusicService implements MusicService {
     }
 
     @Override
-    public MusicDirectory getPlaylist(String id, String name, Context context, ProgressListener progressListener) throws Exception {
+    public MusicDirectory getPlaylist(boolean refresh, String id, String name, Context context, ProgressListener progressListener) throws Exception {
         HttpParams params = new BasicHttpParams();
         HttpConnectionParams.setSoTimeout(params, SOCKET_READ_TIMEOUT_GET_PLAYLIST);
 
@@ -927,7 +904,7 @@ public class RESTMusicService implements MusicService {
 	}
 	
 	@Override
-	public MusicDirectory getPodcastEpisodes(String id, Context context, ProgressListener progressListener) throws Exception {
+	public MusicDirectory getPodcastEpisodes(boolean refresh, String id, Context context, ProgressListener progressListener) throws Exception {
 		Reader reader = getReader(context, progressListener, "getPodcasts", null, Arrays.asList("id"), Arrays.<Object>asList(id));
         try {
             return new PodcastEntryParser(context).parse(id, reader, progressListener);
