@@ -28,6 +28,8 @@ import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.service.MusicService;
 import com.hedwig34.dsub.service.MusicServiceFactory;
+import com.hedwig34.dsub.util.Util;
+
 import java.util.List;
 
 public class AlbumListAdapter extends EndlessAdapter {
@@ -53,7 +55,9 @@ public class AlbumListAdapter extends EndlessAdapter {
 	protected boolean cacheInBackground() throws Exception {
 		MusicService service = MusicServiceFactory.getMusicService(context);
 		MusicDirectory result;
-		if("genres".equals(type)) {
+		if(("genres".equals(type) && Util.checkServerVersion(context, "1.10.0")) || "years".equals(type)) {
+			result = service.getAlbumList(type, extra, size, offset, context, null);
+		} else if("genres".equals(type)) {
 			result = service.getSongsByGenre(extra, size, offset, context, null);
 		} else {
 			result = service.getAlbumList(type, size, offset, context, null);

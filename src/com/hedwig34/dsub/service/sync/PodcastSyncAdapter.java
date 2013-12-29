@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.domain.PodcastEpisode;
 import com.hedwig34.dsub.service.DownloadFile;
@@ -61,9 +62,12 @@ public class PodcastSyncAdapter extends SubsonicSyncAdapter {
 			if(podcastList.size() > 0) {
 				// Refresh podcast listings before syncing
 				musicService.refreshPodcasts(context, null);
+
+				// Just update podcast listings so user doesn't have to
+				musicService.getPodcastChannels(true, context, null);
 			}
 
-			boolean updated = false;
+			List<String> updated = new ArrayList<String>();
 			for(int i = 0; i < podcastList.size(); i++) {
 				SyncSet set = podcastList.get(i);
 				String id = set.id;
@@ -81,7 +85,9 @@ public class PodcastSyncAdapter extends SubsonicSyncAdapter {
 							// Only add if actualy downloaded correctly
 							if(file.isSaved()) {
 								existingEpisodes.add(entry.getId());
-								updated = true;
+								if(!updated.contains(podcasts.getName())) {
+									updated.add(podcasts.getName());
+								}
 							}
 						}
 					}
@@ -96,8 +102,9 @@ public class PodcastSyncAdapter extends SubsonicSyncAdapter {
 			}
 
 			// Make sure there are is at least one change before re-syncing
-			if(updated) {
+			if(updated.size() > 0) {
 				FileUtil.serialize(context, podcastList, SyncUtil.getPodcastSyncFile(context, instance));
+				SyncUtil.showSyncNotification(context, R.string.sync_new_podcasts, SyncUtil.joinNames(updated));
 			}
 		} catch(Exception e) {
 			Log.w(TAG, "Failed to get podcasts for " + Util.getServerName(context, instance));

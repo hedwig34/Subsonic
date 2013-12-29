@@ -12,15 +12,20 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ListView;
 import com.hedwig34.dsub.R;
+import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.domain.Playlist;
+import com.hedwig34.dsub.service.DownloadFile;
 import com.hedwig34.dsub.service.MusicService;
 import com.hedwig34.dsub.service.MusicServiceFactory;
 import com.hedwig34.dsub.service.OfflineException;
 import com.hedwig34.dsub.service.ServerTooOldException;
+import com.hedwig34.dsub.util.FileUtil;
+import com.hedwig34.dsub.util.ProgressListener;
 import com.hedwig34.dsub.util.SyncUtil;
 import com.hedwig34.dsub.util.BackgroundTask;
 import com.hedwig34.dsub.util.CacheCleaner;
@@ -33,64 +38,8 @@ import com.hedwig34.dsub.view.PlaylistAdapter;
 import java.io.Serializable;
 import java.util.List;
 
-public class SelectPlaylistFragment extends SubsonicFragment implements AdapterView.OnItemClickListener {
+public class SelectPlaylistFragment extends SelectListFragment<Playlist> {
 	private static final String TAG = SelectPlaylistFragment.class.getSimpleName();
-
-	private ListView list;
-	private View emptyTextView;
-	private PlaylistAdapter playlistAdapter;
-	private List<Playlist> playlists;
-
-	@Override
-	public void onCreate(Bundle bundle) {
-		super.onCreate(bundle);
-
-		if(bundle != null) {
-			playlists = (List<Playlist>) bundle.getSerializable(Constants.FRAGMENT_LIST);
-		}
-	}
-
-	@Override
-	public void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-		outState.putSerializable(Constants.FRAGMENT_LIST, (Serializable) playlists);
-	}
-
-	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
-		rootView = inflater.inflate(R.layout.abstract_list_fragment, container, false);
-
-		list = (ListView) rootView.findViewById(R.id.fragment_list);
-		emptyTextView = rootView.findViewById(R.id.fragment_list_empty);
-		list.setOnItemClickListener(this);
-		registerForContextMenu(list);
-
-		if(playlists == null) {
-			if(!primaryFragment) {
-				invalidated = true;
-			} else {
-				refresh(false);
-			}
-		} else {
-			list.setAdapter(playlistAdapter = new PlaylistAdapter(context, playlists));
-		}
-
-		return rootView;
-	}
-
-	@Override
-	public void onCreateOptionsMenu(Menu menu, MenuInflater menuInflater) {
-		menuInflater.inflate(R.menu.abstract_top_menu, menu);
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		if(super.onOptionsItemSelected(item)) {
-			return true;
-		}
-
-		return false;
-	}
 
 	@Override
 	public void onCreateContextMenu(ContextMenu menu, View view, ContextMenu.ContextMenuInfo menuInfo) {
@@ -104,7 +53,7 @@ public class SelectPlaylistFragment extends SubsonicFragment implements AdapterV
 			inflater.inflate(R.menu.select_playlist_context, menu);
 
 			AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
-			Playlist playlist = (Playlist) list.getItemAtPosition(info.position);
+			Playlist playlist = (Playlist) listView.getItemAtPosition(info.position);
 			if(SyncUtil.isSyncedPlaylist(context, playlist.getId())) {
 				menu.removeItem(R.id.playlist_menu_sync);
 			} else {
@@ -122,7 +71,7 @@ public class SelectPlaylistFragment extends SubsonicFragment implements AdapterV
 		}
 		
 		AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuItem.getMenuInfo();
-		Playlist playlist = (Playlist) list.getItemAtPosition(info.position);
+		Playlist playlist = (Playlist) listView.getItemAtPosition(info.position);
 
 		SubsonicFragment fragment;
 		Bundle args;
@@ -174,6 +123,30 @@ public class SelectPlaylistFragment extends SubsonicFragment implements AdapterV
 	}
 
 	@Override
+	public int getOptionsMenu() {
+		return R.menu.abstract_top_menu;
+	}
+
+	@Override
+	public ArrayAdapter getAdapter(List<Playlist> playlists) {
+		return new PlaylistAdapter(context, playlists);
+	}
+
+	@Override
+	public List<Playlist> getObjects(MusicService musicService, boolean refresh, ProgressListener listener) throws Exception {
+		List<Playlist> playlists = musicService.getPlaylists(refresh, context, listener);
+		if(!Util.isOffline(context) && refresh) {
+			new CacheCleaner(context, getDownloadService()).cleanPlaylists(playlists);
+		}
+		return playlists;
+	}
+
+	@Override
+	public int getTitleResource() {
+		return R.string.playlist_label;
+	}
+
+	@Override
 	public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 		Playlist playlist = (Playlist) parent.getItemAtPosition(position);
 
@@ -184,37 +157,6 @@ public class SelectPlaylistFragment extends SubsonicFragment implements AdapterV
 		fragment.setArguments(args);
 
 		replaceFragment(fragment, R.id.fragment_list_layout);
-	}
-
-	@Override
-	protected void refresh(boolean refresh) {
-		load(refresh);
-	}
-
-	private void load(final boolean refresh) {
-		setTitle(R.string.playlist_label);
-		list.setVisibility(View.INVISIBLE);
-		emptyTextView.setVisibility(View.GONE);
-		
-		BackgroundTask<List<Playlist>> task = new TabBackgroundTask<List<Playlist>>(this) {
-			@Override
-			protected List<Playlist> doInBackground() throws Throwable {
-				MusicService musicService = MusicServiceFactory.getMusicService(context);
-				playlists = musicService.getPlaylists(refresh, context, this);
-				if(!Util.isOffline(context) && refresh) {
-					new CacheCleaner(context, getDownloadService()).cleanPlaylists(playlists);
-				}
-				return playlists;
-			}
-
-			@Override
-			protected void done(List<Playlist> result) {
-				list.setAdapter(playlistAdapter = new PlaylistAdapter(context, result));
-				emptyTextView.setVisibility(result.isEmpty() ? View.VISIBLE : View.GONE);
-				list.setVisibility(View.VISIBLE);
-			}
-		};
-		task.execute();
 	}
 
 	private void deletePlaylist(final Playlist playlist) {
@@ -232,8 +174,8 @@ public class SelectPlaylistFragment extends SubsonicFragment implements AdapterV
 
 					@Override
 					protected void done(Void result) {
-						playlistAdapter.remove(playlist);
-						playlistAdapter.notifyDataSetChanged();
+						adapter.remove(playlist);
+						adapter.notifyDataSetChanged();
 						Util.toast(context, context.getResources().getString(R.string.menu_deleted_playlist, playlist.getName()));
 					}
 
@@ -322,7 +264,27 @@ public class SelectPlaylistFragment extends SubsonicFragment implements AdapterV
 		downloadPlaylist(playlist.getId(), playlist.getName(), true, true, false, false, true);
 	}
 
-	private void stopSyncPlaylist(Playlist playlist) {
+	private void stopSyncPlaylist(final Playlist playlist) {
 		SyncUtil.removeSyncedPlaylist(context, playlist.getId());
+
+		new LoadingTask<Void>(context, false) {
+			@Override
+			protected Void doInBackground() throws Throwable {
+				// Unpin all of the songs in playlist
+				MusicService musicService = MusicServiceFactory.getMusicService(context);
+				MusicDirectory root = musicService.getPlaylist(true, playlist.getId(), playlist.getName(), context, this);
+				for(MusicDirectory.Entry entry: root.getChildren()) {
+					DownloadFile file = new DownloadFile(context, entry, false);
+					file.unpin();
+				}
+
+				return null;
+			}
+
+			@Override
+			protected void done(Void result) {
+
+			}
+		}.execute();
 	}
 }

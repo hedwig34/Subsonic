@@ -1,17 +1,25 @@
 package com.hedwig34.dsub.util;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
+import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.hedwig34.dsub.R;
+import com.hedwig34.dsub.activity.SubsonicFragmentActivity;
 
 /**
  * Created by Scott on 11/24/13.
  */
 public final class SyncUtil {
 	private static String TAG = SyncUtil.class.getSimpleName();
-	private static ArrayList<String> syncedPlaylists;
+	private static ArrayList<SyncSet> syncedPlaylists;
 	private static ArrayList<SyncSet> syncedPodcasts;
 
 	// Playlist sync
@@ -19,25 +27,41 @@ public final class SyncUtil {
 		if(syncedPlaylists == null) {
 			syncedPlaylists = getSyncedPlaylists(context);
 		}
-		return syncedPlaylists.contains(playlistId);
+		return syncedPlaylists.contains(new SyncSet(playlistId));
 	}
-	public static ArrayList<String> getSyncedPlaylists(Context context) {
+	public static ArrayList<SyncSet> getSyncedPlaylists(Context context) {
 		return getSyncedPlaylists(context, Util.getActiveServer(context));
 	}
-	public static ArrayList<String> getSyncedPlaylists(Context context, int instance) {
-		ArrayList<String> playlists = FileUtil.deserialize(context, getPlaylistSyncFile(context, instance), ArrayList.class);
+	public static ArrayList<SyncSet> getSyncedPlaylists(Context context, int instance) {
+		String syncFile = getPlaylistSyncFile(context, instance);
+		ArrayList<SyncSet> playlists = FileUtil.deserializeCompressed(context, syncFile, ArrayList.class);
 		if(playlists == null) {
-			playlists = new ArrayList<String>();
+			playlists = new ArrayList<SyncSet>();
+
+			// Try to convert old style into new style
+			ArrayList<String> oldPlaylists = FileUtil.deserialize(context, syncFile, ArrayList.class);
+			// If exists, time to convert!
+			if(oldPlaylists != null) {
+				for(String id: oldPlaylists) {
+					playlists.add(new SyncSet(id));
+				}
+
+				FileUtil.serializeCompressed(context, playlists, syncFile);
+			}
 		}
 		return playlists;
 	}
+	public static void setSyncedPlaylists(Context context, int instance, ArrayList<SyncSet> playlists) {
+		FileUtil.serializeCompressed(context, playlists, getPlaylistSyncFile(context, instance));
+	}
 	public static void addSyncedPlaylist(Context context, String playlistId) {
 		String playlistFile = getPlaylistSyncFile(context);
-		ArrayList<String> playlists = getSyncedPlaylists(context);
-		if(!playlists.contains(playlistId)) {
-			playlists.add(playlistId);
+		ArrayList<SyncSet> playlists = getSyncedPlaylists(context);
+		SyncSet set = new SyncSet(playlistId);
+		if(!playlists.contains(set)) {
+			playlists.add(set);
 		}
-		FileUtil.serialize(context, playlists, playlistFile);
+		FileUtil.serializeCompressed(context, playlists, playlistFile);
 		syncedPlaylists = playlists;
 	}
 	public static void removeSyncedPlaylist(Context context, String playlistId) {
@@ -46,10 +70,11 @@ public final class SyncUtil {
 	}
 	public static void removeSyncedPlaylist(Context context, String playlistId, int instance) {
 		String playlistFile = getPlaylistSyncFile(context, instance);
-		ArrayList<String> playlists = getSyncedPlaylists(context, instance);
-		if(playlists.contains(playlistId)) {
-			playlists.remove(playlistId);
-			FileUtil.serialize(context, playlists, playlistFile);
+		ArrayList<SyncSet> playlists = getSyncedPlaylists(context, instance);
+		SyncSet set = new SyncSet(playlistId);
+		if(playlists.contains(set)) {
+			playlists.remove(set);
+			FileUtil.serializeCompressed(context, playlists, playlistFile);
 			syncedPlaylists = playlists;
 		}
 	}
@@ -111,11 +136,14 @@ public final class SyncUtil {
 	
 	// Starred
 	public static ArrayList<String> getSyncedStarred(Context context, int instance) {
-		ArrayList<String> list = FileUtil.deserialize(context, getStarredSyncFile(context, instance), ArrayList.class);
+		ArrayList<String> list = FileUtil.deserializeCompressed(context, getStarredSyncFile(context, instance), ArrayList.class);
 		if(list == null) {
 			list = new ArrayList<String>();
 		}
 		return list;
+	}
+	public static void setSyncedStarred(ArrayList<String> syncedList, Context context, int instance) {
+		FileUtil.serializeCompressed(context, syncedList, SyncUtil.getStarredSyncFile(context, instance));
 	}
 	public static String getStarredSyncFile(Context context, int instance) {
 		return "sync-starred-" + (Util.getRestUrl(context, null, instance)).hashCode() + ".ser";
@@ -131,6 +159,36 @@ public final class SyncUtil {
 	}
 	public static String getMostRecentSyncFile(Context context, int instance) {
 		return "sync-most_recent-" + (Util.getRestUrl(context, null, instance)).hashCode() + ".ser";
+	}
+
+	public static void showSyncNotification(final Context context, int stringId, String extra) {
+		if(Util.getPreferences(context).getBoolean(Constants.PREFERENCES_KEY_SYNC_NOTIFICATION, true)) {
+			String content = (extra != null) ? context.getResources().getString(stringId, extra) : context.getResources().getString(stringId);
+
+			NotificationCompat.Builder builder;
+			builder = new NotificationCompat.Builder(context)
+					.setSmallIcon(R.drawable.stat_notify_sync)
+					.setContentTitle(context.getResources().getString(R.string.sync_title))
+					.setContentText(content)
+					.setStyle(new NotificationCompat.BigTextStyle().bigText(content))
+					.setOngoing(false);
+
+			Intent notificationIntent = new Intent(context, SubsonicFragmentActivity.class);
+			notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+			builder.setContentIntent(PendingIntent.getActivity(context, 2, notificationIntent, 0));
+
+			NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+			notificationManager.notify(stringId, builder.build());
+		}
+	}
+
+	public static String joinNames(List<String> names) {
+		StringBuilder builder = new StringBuilder();
+		for (String val : names) {
+			builder.append(val).append(", ");
+		}
+		builder.setLength(builder.length() - 2);
+		return builder.toString();
 	}
 
 	public static class SyncSet implements Serializable {

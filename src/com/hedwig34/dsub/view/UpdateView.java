@@ -38,10 +38,11 @@ import com.hedwig34.dsub.R;
 public class UpdateView extends LinearLayout {
 	private static final String TAG = UpdateView.class.getSimpleName();
 	private static final WeakHashMap<UpdateView, ?> INSTANCES = new WeakHashMap<UpdateView, Object>();
-	
+
 	private static Handler backgroundHandler;
 	private static Handler uiHandler;
 	private static Runnable updateRunnable;
+	private static int activeActivities = 0;
 
 	protected Context context;
 	protected ImageButton starButton;
@@ -124,13 +125,23 @@ public class UpdateView extends LinearLayout {
 
     private static void updateAll() {
         try {
+			// If nothing can see this, stop updating
+			if(activeActivities == 0) {
+				activeActivities--;
+				return;
+			}
+
 			List<UpdateView> views = new ArrayList<UpdateView>();;
             for (UpdateView view : INSTANCES.keySet()) {
                 if (view.isShown()) {
 					views.add(view);
                 }
             }
-			updateAllLive(views);
+			if(views.size() > 0) {
+				updateAllLive(views);
+			} else {
+				uiHandler.postDelayed(updateRunnable, 2000L);
+			}
         } catch (Throwable x) {
             Log.w(TAG, "Error when updating song views.", x);
         }
@@ -163,6 +174,18 @@ public class UpdateView extends LinearLayout {
 				}
 			}
 		});
+	}
+
+	public static void addActiveActivity() {
+		activeActivities++;
+
+		if(activeActivities == 0 && uiHandler != null && updateRunnable != null) {
+			activeActivities++;
+			uiHandler.post(updateRunnable);
+		}
+	}
+	public static void removeActiveActivity() {
+		activeActivities--;
 	}
 	
 	protected void updateBackground() {

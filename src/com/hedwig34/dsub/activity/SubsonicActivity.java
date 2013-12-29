@@ -62,6 +62,7 @@ import com.hedwig34.dsub.util.Constants;
 import com.hedwig34.dsub.util.ImageLoader;
 import com.hedwig34.dsub.util.Util;
 import com.hedwig34.dsub.view.DrawerAdapter;
+import com.hedwig34.dsub.view.UpdateView;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -135,6 +136,14 @@ public class SubsonicActivity extends ActionBarActivity implements OnItemSelecte
 		}
 		
 		populateDrawer();
+		UpdateView.addActiveActivity();
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+
+		UpdateView.removeActiveActivity();
 	}
 
 	@Override

@@ -47,7 +47,7 @@
     <string name="main.offline">Go Offline</string>
 	<string name="main.online">Go Online</string>
     <string name="main.settings">Settings</string>
-    <string name="main.albums_title">Albums</string>
+    <string name="main.albums_title">Album Lists</string>
     <string name="main.albums_newest">Recently added</string>
     <string name="main.albums_recent">Recently played</string>
     <string name="main.albums_frequent">Most played</string>
@@ -55,6 +55,8 @@
     <string name="main.albums_starred">Starred</string>
     <string name="main.albums_random">Random</string>
 	<string name="main.albums_genres">Genres</string>
+	<string name="main.albums_year">Decades</string>
+	<string name="main.songs_genres">@string/main.albums_genres</string>
 	<string name="main.back_confirm">Press back again to exit</string>
 
 	<string name="menu.search">Search</string>
@@ -78,6 +80,7 @@
 	<string name="menu.keep_synced">Keep Synced</string>
 	<string name="menu.stop_sync">Stop syncing</string>
 	<string name="menu.show_all">Show all media</string>
+	<string name="menu.show_artist">Show Artist</string>
 
     <string name="playlist.label">Playlists</string>
 	<string name="playlist.update_info">Update Information</string>
@@ -192,6 +195,14 @@
 	<string name="download.playing_out_of">Playing: %1$d/%2$d</string>
 	<string name="download.save_bookmark_title">Create bookmark</string>
 	<string name="download.save_bookmark">Bookmark created</string>
+	<string name="download.downloading_title">Downloading %1$d songs</string>
+	<string name="download.downloading_summary">Current: %1$s</string>
+
+	<string name="sync.title">DSub: New media is available</string>
+	<string name="sync.new_podcasts">New podcasts: %s</string>
+	<string name="sync.new_playlists">New in playlists: %s</string>
+	<string name="sync.new_albums">New albums: %s</string>
+	<string name="sync.new_starred">New starred songs</string>
     
 	<string name="starring_content_starred">Starred \"%s\"</string>
 	<string name="starring_content_unstarred">Unstarred \"%s\"</string>
@@ -231,6 +242,7 @@
     <string name="settings.server_unused">Unused</string>
     <string name="settings.server_name">Name</string>
     <string name="settings.server_address">Server address</string>
+	<string name="settings.server_internal_address">Internal network address</string>
     <string name="settings.server_username">Username</string>
     <string name="settings.server_password">Password</string>
 	<string name="settings.server_open_browser">Open in browser</string>
@@ -361,6 +373,15 @@
 	<string name="settings.sync_most_recent_summary">Automatically cache newly added albums</string>
 	<string name="settings.sync_starred">Sync Starred</string>
 	<string name="settings.sync_starred_summary">Automatically cache songs, albums, and artists which are starred</string>
+	<string name="settings.sync_notification">Show Sync Notification</string>
+	<string name="settings.sync_notification_summary">Show a notification after new media has been synced</string>
+	<string name="settings.menu_options.title">Optional Menu Options</string>
+	<string name="settings.menu_options.play_next">Play Next</string>
+	<string name="settings.menu_options.play_next_summary">Show Play next in menus</string>
+	<string name="settings.menu_options.play_last">Play Last</string>
+	<string name="settings.menu_options.play_last_summary">Show Play last in menus</string>
+	<string name="settings.menu_options.star">Star</string>
+	<string name="settings.menu_options.star_summary">Show Star in menus</string>
 
 	<string name="shuffle.title">Shuffle By</string>
 	<string name="shuffle.startYear">Start Year:</string>

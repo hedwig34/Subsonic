@@ -513,7 +513,46 @@ public class RESTMusicService implements MusicService {
         }
     }
 
-    @Override
+	@Override
+	public MusicDirectory getAlbumList(String type, String extra, int size, int offset, Context context, ProgressListener progressListener) throws Exception {
+		checkServerVersion(context, "1.10.1", "This type of album list is not supported");
+
+		List<String> names = new ArrayList<String>();
+		List<Object> values = new ArrayList<Object>();
+
+		names.add("size");
+		names.add("offset");
+
+		values.add(size);
+		values.add(offset);
+
+		if("genres".equals(type)) {
+			names.add("type");
+			values.add("byGenre");
+
+			names.add("genre");
+			values.add(extra);
+		} else if("years".equals(type)) {
+			names.add("type");
+			values.add("byYear");
+
+			names.add("fromYear");
+			names.add("toYear");
+
+			int decade = Integer.parseInt(extra);
+			values.add(decade);
+			values.add(decade + 10);
+		}
+
+		Reader reader = getReader(context, progressListener, "getAlbumList", null, names, values);
+		try {
+			return new AlbumListParser(context).parse(reader, progressListener);
+		} finally {
+			Util.close(reader);
+		}
+	}
+
+	@Override
     public MusicDirectory getStarredList(Context context, ProgressListener progressListener) throws Exception {
         Reader reader = getReader(context, progressListener, "getStarred", null);
         try {
@@ -1323,11 +1362,14 @@ public class RESTMusicService implements MusicService {
         return networkInfo == null ? -1 : networkInfo.getType();
     }
     
-	private String getRestUrl(Context context, String method) {
+	public String getRestUrl(Context context, String method) {
+		return getRestUrl(context, method, true);
+	}
+	public String getRestUrl(Context context, String method, boolean allowAltAddress) {
 		if(instance == null) {
-			return Util.getRestUrl(context, method);
+			return Util.getRestUrl(context, method, allowAltAddress);
 		} else {
-			return Util.getRestUrl(context, method, instance);
+			return Util.getRestUrl(context, method, instance, allowAltAddress);
 		}
 	}
 }

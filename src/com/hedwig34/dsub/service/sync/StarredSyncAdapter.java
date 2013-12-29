@@ -27,6 +27,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.util.FileUtil;
 import com.hedwig34.dsub.util.SyncUtil;
@@ -54,7 +55,7 @@ public class StarredSyncAdapter extends SubsonicSyncAdapter {
 			MusicDirectory starredList = musicService.getStarredList(context, null);
 
 			// Pin all the starred stuff
-			downloadRecursively(syncedList, starredList, context, true);
+			boolean updated = downloadRecursively(syncedList, starredList, context, true);
 
 			// Get old starred list
 			ArrayList<String> oldSyncedList = SyncUtil.getSyncedStarred(context, instance);
@@ -63,13 +64,14 @@ public class StarredSyncAdapter extends SubsonicSyncAdapter {
 			oldSyncedList.removeAll(syncedList);
 
 			for(String path: oldSyncedList) {
-				File file = new File(path);
-				if(!file.delete()) {
-					Log.w(TAG, "Failed to delete " + path);
-				}
+				File saveFile = new File(path);
+				FileUtil.unpinSong(saveFile);
 			}
 
-			FileUtil.serialize(context, syncedList, SyncUtil.getStarredSyncFile(context, instance));
+			SyncUtil.setSyncedStarred(syncedList, context, instance);
+			if(updated) {
+				SyncUtil.showSyncNotification(context, R.string.sync_new_starred, null);
+			}
 		} catch(Exception e) {
 			Log.e(TAG, "Failed to get starred list for " + Util.getServerName(context, instance));
 		}

@@ -75,6 +75,7 @@ public final class Constants {
     public static final String PREFERENCES_KEY_SERVER_INSTANCE = "serverInstanceId";
     public static final String PREFERENCES_KEY_SERVER_NAME = "serverName";
     public static final String PREFERENCES_KEY_SERVER_URL = "serverUrl";
+	public static final String PREFERENCES_KEY_SERVER_INTERNAL_URL = "serverInternalUrl";
 	public static final String PREFERENCES_KEY_SERVER_VERSION = "serverVersion";
 	public static final String PREFERENCES_KEY_TEST_CONNECTION = "serverTestConnection";
 	public static final String PREFERENCES_KEY_OPEN_BROWSER = "openBrowser";
@@ -122,6 +123,7 @@ public final class Constants {
 	public static final String PREFERENCES_KEY_SYNC_ENABLED = "syncEnabled";
 	public static final String PREFERENCES_KEY_SYNC_INTERVAL = "syncInterval";
 	public static final String PREFERENCES_KEY_SYNC_WIFI = "syncWifi";
+	public static final String PREFERENCES_KEY_SYNC_NOTIFICATION = "syncNotification";
 	public static final String PREFERENCES_KEY_SYNC_STARRED = "syncStarred";
 	public static final String PREFERENCES_KEY_SYNC_MOST_RECENT = "syncMostRecent";
 	public static final String PREFERENCES_KEY_PAUSE_DISCONNECT = "pauseOnDisconnect";
@@ -129,6 +131,9 @@ public final class Constants {
 	public static final String PREFERENCES_KEY_PODCASTS_ENABLED = "podcastsEnabled";
 	public static final String PREFERENCES_KEY_BOOKMARKS_ENABLED = "bookmarksEnabled";
 	public static final String PREFERENCES_KEY_CUSTOM_SORT_ENABLED = "customSortEnabled";
+	public static final String PREFERENCES_KEY_MENU_PLAY_NEXT = "showPlayNext";
+	public static final String PREFERENCES_KEY_MENU_PLAY_LAST = "showPlayLast";
+	public static final String PREFERENCES_KEY_MENU_STAR = "showStar";
 	
 	public static final String OFFLINE_SCROBBLE_COUNT = "scrobbleCount";
 	public static final String OFFLINE_SCROBBLE_ID = "scrobbleID";

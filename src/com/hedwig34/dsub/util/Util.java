@@ -336,36 +336,52 @@ public final class Util {
     }
 
     public static String getRestUrl(Context context, String method) {
-        SharedPreferences prefs = getPreferences(context);
-        int instance = prefs.getInt(Constants.PREFERENCES_KEY_SERVER_INSTANCE, 1);
-        return getRestUrl(context, method, prefs, instance);
+        return getRestUrl(context, method, true);
     }
+	public static String getRestUrl(Context context, String method, boolean allowAltAddress) {
+		SharedPreferences prefs = getPreferences(context);
+		int instance = prefs.getInt(Constants.PREFERENCES_KEY_SERVER_INSTANCE, 1);
+		return getRestUrl(context, method, prefs, instance, allowAltAddress);
+	}
     public static String getRestUrl(Context context, String method, int instance) {
-    	SharedPreferences prefs = getPreferences(context);
-    	return getRestUrl(context, method, prefs, instance);
+    	return getRestUrl(context, method, instance, true);
     }
+	public static String getRestUrl(Context context, String method, int instance, boolean allowAltAddress) {
+		SharedPreferences prefs = getPreferences(context);
+		return getRestUrl(context, method, prefs, instance, allowAltAddress);
+	}
     public static String getRestUrl(Context context, String method, SharedPreferences prefs, int instance) {
-        StringBuilder builder = new StringBuilder();
-        
-        String serverUrl = prefs.getString(Constants.PREFERENCES_KEY_SERVER_URL + instance, null);
-        String username = prefs.getString(Constants.PREFERENCES_KEY_USERNAME + instance, null);
-        String password = prefs.getString(Constants.PREFERENCES_KEY_PASSWORD + instance, null);
-
-        // Slightly obfuscate password
-        password = "enc:" + Util.utf8HexEncode(password);
-
-        builder.append(serverUrl);
-        if (builder.charAt(builder.length() - 1) != '/') {
-            builder.append("/");
-        }
-        builder.append("rest/").append(method).append(".view");
-        builder.append("?u=").append(username);
-        builder.append("&p=").append(password);
-        builder.append("&v=").append(Constants.REST_PROTOCOL_VERSION);
-        builder.append("&c=").append(Constants.REST_CLIENT_ID);
-
-        return builder.toString();
+        return getRestUrl(context, method, prefs, instance, true);
     }
+	public static String getRestUrl(Context context, String method, SharedPreferences prefs, int instance, boolean allowAltAddress) {
+		StringBuilder builder = new StringBuilder();
+
+		String serverUrl = prefs.getString(Constants.PREFERENCES_KEY_SERVER_URL + instance, null);
+		if(allowAltAddress && Util.isWifiConnected(context)) {
+			String internalUrl = prefs.getString(Constants.PREFERENCES_KEY_SERVER_INTERNAL_URL + instance, null);
+			if(internalUrl != null && !"".equals(internalUrl) && !"http://".equals(internalUrl)) {
+				serverUrl = internalUrl;
+			}
+		}
+
+		String username = prefs.getString(Constants.PREFERENCES_KEY_USERNAME + instance, null);
+		String password = prefs.getString(Constants.PREFERENCES_KEY_PASSWORD + instance, null);
+
+		// Slightly obfuscate password
+		password = "enc:" + Util.utf8HexEncode(password);
+
+		builder.append(serverUrl);
+		if (builder.charAt(builder.length() - 1) != '/') {
+			builder.append("/");
+		}
+		builder.append("rest/").append(method).append(".view");
+		builder.append("?u=").append(username);
+		builder.append("&p=").append(password);
+		builder.append("&v=").append(Constants.REST_PROTOCOL_VERSION);
+		builder.append("&c=").append(Constants.REST_CLIENT_ID);
+
+		return builder.toString();
+	}
 	
 	public static String getVideoPlayerType(Context context) {
 		SharedPreferences prefs = getPreferences(context); 
@@ -788,6 +804,12 @@ public final class Util {
 
         return connected && (!wifiRequired || wifiConnected);
     }
+	public static boolean isWifiConnected(Context context) {
+		ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+		NetworkInfo networkInfo = manager.getActiveNetworkInfo();
+		boolean connected = networkInfo != null && networkInfo.isConnected();
+		return connected && (networkInfo.getType() == ConnectivityManager.TYPE_WIFI);
+	}
 
     public static boolean isExternalStoragePresent() {
         return Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState());
@@ -872,7 +894,7 @@ public final class Util {
         Intent notificationIntent = new Intent(context, SubsonicFragmentActivity.class);
 		notificationIntent.putExtra(Constants.INTENT_EXTRA_NAME_DOWNLOAD, true);
 		notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        notification.contentIntent = PendingIntent.getActivity(context, 0, notificationIntent, Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        notification.contentIntent = PendingIntent.getActivity(context, 0, notificationIntent, 0);
         
 		handler.post(new Runnable() {
 			@Override
@@ -994,8 +1016,8 @@ public final class Util {
     	NotificationCompat.Builder builder;
     	builder = new NotificationCompat.Builder(context)
     		.setSmallIcon(R.drawable.stat_notify_download)
-    		.setContentTitle("Downloading " + size + " songs")
-    		.setContentText("Current: " + (file != null ? file.getSong().getTitle() : "none"))
+    		.setContentTitle(context.getResources().getString(R.string.download_downloading_title, size))
+    		.setContentText(context.getResources().getString(R.string.download_downloading_summary, (file != null ? file.getSong().getTitle() : "none")))
     		.setProgress(10, 5, true)
 			.setOngoing(true);
     	
@@ -1003,7 +1025,7 @@ public final class Util {
 		notificationIntent.putExtra(Constants.INTENT_EXTRA_NAME_DOWNLOAD, true);
 		notificationIntent.putExtra(Constants.INTENT_EXTRA_NAME_DOWNLOAD_VIEW, true);
 		notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-		builder.setContentIntent(PendingIntent.getActivity(context, 0, notificationIntent, Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+		builder.setContentIntent(PendingIntent.getActivity(context, 1, notificationIntent, 0));
 
 		NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationManager.notify(Constants.NOTIFICATION_ID_DOWNLOADING, builder.build());

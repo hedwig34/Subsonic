@@ -22,17 +22,24 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.RandomAccessFile;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.DeflaterInputStream;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.InflaterInputStream;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 import com.hedwig34.dsub.domain.Artist;
@@ -228,6 +235,23 @@ public class FileUtil {
 		File musicDirectory = FileUtil.getMusicDirectory(context);
 		return Util.recursiveDelete(musicDirectory);
 	}
+	public static void deleteSerializedCache(Context context) {
+		for(File file: context.getCacheDir().listFiles()) {
+			if(file.getName().indexOf(".ser") != -1) {
+				file.delete();
+			}
+		}
+	}
+
+	public static void unpinSong(File saveFile) {
+		// Unpin file, rename to .complete
+		File completeFile = new File(saveFile.getParent(), FileUtil.getBaseName(saveFile.getName()) +
+				".complete." + FileUtil.getExtension(saveFile.getName()));
+
+		if(!saveFile.renameTo(completeFile)) {
+			Log.w(TAG, "Failed to rename " + saveFile + " to " + completeFile);
+		}
+	}
 
     public static boolean ensureDirectoryExistsAndIsReadWritable(File dir) {
         if (dir == null) {
@@ -379,39 +403,100 @@ public class FileUtil {
 	}
 
     public static <T extends Serializable> boolean serialize(Context context, T obj, String fileName) {
-        Output out = null;
-        try {
-			RandomAccessFile file = new RandomAccessFile(context.getCacheDir() + "/" + fileName, "rw");
-            out = new Output(new FileOutputStream(file.getFD()));
-			kryo.writeObject(out, obj);
-            Log.i(TAG, "Serialized object to " + fileName);
-            return true;
-        } catch (Throwable x) {
-            Log.w(TAG, "Failed to serialize object to " + fileName);
-            return false;
-        } finally {
-            Util.close(out);
-        }
+		synchronized (kryo) {
+			Output out = null;
+			try {
+				RandomAccessFile file = new RandomAccessFile(context.getCacheDir() + "/" + fileName, "rw");
+				out = new Output(new FileOutputStream(file.getFD()));
+				kryo.writeObject(out, obj);
+				Log.i(TAG, "Serialized object to " + fileName);
+				return true;
+			} catch (Throwable x) {
+				Log.w(TAG, "Failed to serialize object to " + fileName);
+				return false;
+			} finally {
+				Util.close(out);
+			}
+		}
     }
 
-    public static <T extends Serializable> T deserialize(Context context, String fileName, Class<T> tClass) {
-        Input in = null;
-        try {
-			RandomAccessFile file = new RandomAccessFile(context.getCacheDir() + "/" + fileName, "r");
+	public static <T extends Serializable> T deserialize(Context context, String fileName, Class<T> tClass) {
+		return deserialize(context, fileName, tClass, 0);
+	}
 
-            in = new Input(new FileInputStream(file.getFD()));
-			T result = (T) kryo.readObject(in, tClass);
-            Log.i(TAG, "Deserialized object from " + fileName);
-            return result;
-        } catch(FileNotFoundException e) {
-			// Different error message
-			Log.w(TAG, "No serialization for object from " + fileName);
-			return null;
-		} catch (Throwable x) {
-            Log.w(TAG, "Failed to deserialize object from " + fileName, x);
-            return null;
-        } finally {
-            Util.close(in);
-        }
+    public static <T extends Serializable> T deserialize(Context context, String fileName, Class<T> tClass, int hoursOld) {
+		synchronized (kryo) {
+			Input in = null;
+			try {
+				File file = new File(context.getCacheDir(), fileName);
+
+				if(hoursOld != 0) {
+					Date fileDate = new Date(file.lastModified());
+					// Convert into hours
+					long age = (new Date().getTime() - fileDate.getTime()) / 1000 / 3600;
+					if(age > hoursOld) {
+						return null;
+					}
+				}
+
+				RandomAccessFile randomFile = new RandomAccessFile(file, "r");
+
+				in = new Input(new FileInputStream(randomFile.getFD()));
+				T result = (T) kryo.readObject(in, tClass);
+				Log.i(TAG, "Deserialized object from " + fileName);
+				return result;
+			} catch(FileNotFoundException e) {
+				// Different error message
+				Log.w(TAG, "No serialization for object from " + fileName);
+				return null;
+			} catch (Throwable x) {
+				Log.w(TAG, "Failed to deserialize object from " + fileName, x);
+				return null;
+			} finally {
+				Util.close(in);
+			}
+		}
     }
+
+	public static <T extends Serializable> boolean serializeCompressed(Context context, T obj, String fileName) {
+		synchronized (kryo) {
+			Output out = null;
+			try {
+				RandomAccessFile file = new RandomAccessFile(context.getCacheDir() + "/" + fileName, "rw");
+				out = new Output(new DeflaterOutputStream(new FileOutputStream(file.getFD())));
+				kryo.writeObject(out, obj);
+				Log.i(TAG, "Serialized compressed object to " + fileName);
+				return true;
+			} catch (Throwable x) {
+				Log.w(TAG, "Failed to serialize compressed object to " + fileName);
+				return false;
+			} finally {
+				Util.close(out);
+			}
+		}
+	}
+
+	@TargetApi(Build.VERSION_CODES.GINGERBREAD)
+	public static <T extends Serializable> T deserializeCompressed(Context context, String fileName, Class<T> tClass) {
+		synchronized (kryo) {
+			Input in = null;
+			try {
+				RandomAccessFile file = new RandomAccessFile(context.getCacheDir() + "/" + fileName, "r");
+
+				in = new Input(new InflaterInputStream(new FileInputStream(file.getFD())));
+				T result = (T) kryo.readObject(in, tClass);
+				Log.i(TAG, "Deserialized compressed object from " + fileName);
+				return result;
+			} catch(FileNotFoundException e) {
+				// Different error message
+				Log.w(TAG, "No serialization compressed for object from " + fileName);
+				return null;
+			} catch (Throwable x) {
+				Log.w(TAG, "Failed to deserialize compressed object from " + fileName, x);
+				return null;
+			} finally {
+				Util.close(in);
+			}
+		}
+	}
 }

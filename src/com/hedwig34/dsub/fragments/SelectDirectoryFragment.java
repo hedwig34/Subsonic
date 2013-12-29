@@ -3,6 +3,7 @@ package com.hedwig34.dsub.fragments;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -180,6 +181,14 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 						menu.removeItem(R.id.menu_remove_playlist);
 					}
 				}
+
+				SharedPreferences prefs = Util.getPreferences(context);
+				if(!prefs.getBoolean(Constants.PREFERENCES_KEY_MENU_PLAY_NEXT, true)) {
+					menu.setGroupVisible(R.id.hide_play_next, false);
+				}
+				if(!prefs.getBoolean(Constants.PREFERENCES_KEY_MENU_PLAY_LAST, true)) {
+					menu.setGroupVisible(R.id.hide_play_last, false);
+				}
 			} else {
 				if(Util.isOffline(context)) {
 					menuInflater.inflate(R.menu.select_podcast_episode_offline, menu);
@@ -222,6 +231,9 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 				selectAll(false, false);
 				return true;
 			case R.id.menu_add_playlist:
+				if(getSelectedSongs().isEmpty()) {
+					selectAll(true, false);
+				}
 				addToPlaylist(getSelectedSongs());
 				return true;
 			case R.id.menu_remove_playlist:
@@ -252,6 +264,10 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		onCreateContextMenu(menu, view, menuInfo, entry);
 		if(!entry.isVideo() && !Util.isOffline(context) && playlistId == null && (podcastId == null  || Util.isOffline(context) && podcastId != null)) {
 			menu.removeItem(R.id.song_menu_remove_playlist);
+		}
+		// Remove show artists if parent is not set and if not on a album list
+		if((albumListType == null || entry.getParent() == null) && !Util.isOffline(context)) {
+			menu.removeItem(R.id.album_menu_show_artist);
 		}
 		if(podcastId != null && !Util.isOffline(context)) {
 			String status = ((PodcastEpisode)entry).getStatus();
@@ -296,28 +312,13 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		if (position >= 0) {
 			MusicDirectory.Entry entry = (MusicDirectory.Entry) parent.getItemAtPosition(position);
 			if (entry.isDirectory()) {
-				int fragId = rootId;
-				/*if(albumListType != null && entry.getParent() != null) {
-					SubsonicFragment parentFragment = new SelectDirectoryFragment();
-					Bundle args = new Bundle();
-					args.putString(Constants.INTENT_EXTRA_NAME_ID, entry.getParent());
-					args.putString(Constants.INTENT_EXTRA_NAME_NAME, entry.getArtist());
-					if("recent".equals(albumListType)) {
-						args.putBoolean(Constants.INTENT_EXTRA_REFRESH_LISTINGS, true);
-					}
-					parentFragment.setArguments(args);
-
-					replaceFragment(parentFragment, fragId);
-					fragId = parentFragment.getRootId();
-				}*/
-				
 				SubsonicFragment fragment = new SelectDirectoryFragment();
 				Bundle args = new Bundle();
 				args.putString(Constants.INTENT_EXTRA_NAME_ID, entry.getId());
 				args.putString(Constants.INTENT_EXTRA_NAME_NAME, entry.getTitle());
 				fragment.setArguments(args);
 
-				replaceFragment(fragment, fragId, fragId == rootId);
+				replaceFragment(fragment, rootId, true);
 			} else if (entry.isVideo()) {
 				playVideo(entry);
 			} else if(entry instanceof PodcastEpisode) {
@@ -456,7 +457,7 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			setTitle(R.string.main_albums_frequent);
 		} else if ("starred".equals(albumListType)) {
 			setTitle(R.string.main_albums_starred);
-		} else if("genres".equals(albumListType)) {
+		} else if("genres".equals(albumListType) || "years".equals(albumListType)) {
 			setTitle(albumListExtra);
 		}
 
@@ -466,6 +467,8 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 				MusicDirectory result;
 				if ("starred".equals(albumListType)) {
 					result = service.getStarredList(context, this);
+				} else if(("genres".equals(albumListType) && Util.checkServerVersion(context, "1.10.0")) || "years".equals(albumListType)) {
+					result = service.getAlbumList(albumListType, albumListExtra, size, 0, context, this);
 				} else if("genres".equals(albumListType)) {
 					result = service.getSongsByGenre(albumListExtra, size, 0, context, this);
 				} else {
