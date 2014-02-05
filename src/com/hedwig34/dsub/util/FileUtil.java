@@ -139,21 +139,62 @@ public class FileUtil {
 
     public static File getAlbumArtFile(Context context, MusicDirectory.Entry entry) {
         File albumDir = getAlbumDirectory(context, entry);
-        return getAlbumArtFile(albumDir);
+		File artFile;
+		File albumFile = getAlbumArtFile(albumDir);
+		File hexFile = getHexAlbumArtFile(albumDir);
+		if(albumDir.exists()) {
+			if(hexFile.exists()) {
+				hexFile.renameTo(albumFile);
+			}
+			artFile = albumFile;
+		} else {
+			artFile = hexFile;
+		}
+        return artFile;
     }
 
     public static File getAlbumArtFile(File albumDir) {
         return new File(albumDir, Constants.ALBUM_ART_FILE);
     }
+	public static File getHexAlbumArtFile(File albumDir) {
+		return new File(getAlbumArtDirectory(), Util.md5Hex(albumDir.getPath()) + ".jpeg");
+	}
 
     public static Bitmap getAlbumArtBitmap(Context context, MusicDirectory.Entry entry, int size) {
         File albumArtFile = getAlbumArtFile(context, entry);
         if (albumArtFile.exists()) {
-            Bitmap bitmap = BitmapFactory.decodeFile(albumArtFile.getPath());
-			return (bitmap == null) ? null : Bitmap.createScaledBitmap(bitmap, size, size, true);
+			final BitmapFactory.Options opt = new BitmapFactory.Options();
+			opt.inJustDecodeBounds = true;
+			BitmapFactory.decodeFile(albumArtFile.getPath(), opt);
+			opt.inPurgeable = true;
+			opt.inSampleSize = Util.calculateInSampleSize(opt, size, Util.getScaledHeight(opt.outHeight, opt.outWidth, size));
+			opt.inJustDecodeBounds = false;
+
+			Bitmap bitmap = BitmapFactory.decodeFile(albumArtFile.getPath(), opt);
+			return bitmap == null ? null : getScaledBitmap(bitmap, size);
         }
         return null;
     }
+	public static Bitmap getSampledBitmap(byte[] bytes, int size) {
+		final BitmapFactory.Options opt = new BitmapFactory.Options();
+		opt.inJustDecodeBounds = true;
+		BitmapFactory.decodeByteArray(bytes, 0, bytes.length, opt);
+		opt.inPurgeable = true;
+		opt.inSampleSize = Util.calculateInSampleSize(opt, size, Util.getScaledHeight(opt.outHeight, opt.outWidth, size));
+		opt.inJustDecodeBounds = false;
+		Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, opt);
+		return getScaledBitmap(bitmap, size);
+	}
+	public static Bitmap getScaledBitmap(Bitmap bitmap, int size) {
+		return Bitmap.createScaledBitmap(bitmap, size, Util.getScaledHeight(bitmap, size), true);
+	}
+
+	public static File getAlbumArtDirectory() {
+		File albumArtDir = new File(getSubsonicDirectory(), "artwork");
+		ensureDirectoryExistsAndIsReadWritable(albumArtDir);
+		ensureDirectoryExistsAndIsReadWritable(new File(albumArtDir, ".nomedia"));
+		return albumArtDir;
+	}
 	
 	public static File getArtistDirectory(Context context, Artist artist) {
 		File dir = new File(getMusicDirectory(context).getPath() + "/" + fileSystemSafe(artist.getName()));
@@ -165,17 +206,33 @@ public class FileUtil {
 	}
 
     public static File getAlbumDirectory(Context context, MusicDirectory.Entry entry) {
-        File dir;
+        File dir = null;
         if (entry.getPath() != null) {
             File f = new File(fileSystemSafeDir(entry.getPath()));
             dir = new File(getMusicDirectory(context).getPath() + "/" + (entry.isDirectory() ? f.getPath() : f.getParent()));
         } else {
-            String artist = fileSystemSafe(entry.getArtist());
-			String album = fileSystemSafe(entry.getAlbum());
-			if("unnamed".equals(album)) {
-				album = fileSystemSafe(entry.getTitle());
+			// Do a special lookup since 4.7+ doesn't match artist/album to entry.getPath
+			String s = Util.getRestUrl(context, null, false) + entry.getId();
+			String cacheName = (Util.isTagBrowsing(context) ? "album-" : "directory-") + s.hashCode() + ".ser";
+			MusicDirectory entryDir = FileUtil.deserialize(context, cacheName, MusicDirectory.class);
+
+			if(entryDir != null) {
+				List<MusicDirectory.Entry> songs = entryDir.getChildren(false, true);
+				if(songs.size() > 0) {
+					MusicDirectory.Entry firstSong = songs.get(0);
+					File songFile = FileUtil.getSongFile(context, firstSong);
+					dir = songFile.getParentFile();
+				}
 			}
-            dir = new File(getMusicDirectory(context).getPath() + "/" + artist + "/" + album);
+
+			if(dir == null) {
+				String artist = fileSystemSafe(entry.getArtist());
+				String album = fileSystemSafe(entry.getAlbum());
+				if("unnamed".equals(album)) {
+					album = fileSystemSafe(entry.getTitle());
+				}
+				dir = new File(getMusicDirectory(context).getPath() + "/" + artist + "/" + album);
+			}
         }
         return dir;
     }

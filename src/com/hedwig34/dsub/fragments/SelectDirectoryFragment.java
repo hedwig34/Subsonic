@@ -16,13 +16,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.domain.MusicDirectory;
+import com.hedwig34.dsub.domain.Share;
 import com.hedwig34.dsub.util.ImageLoader;
-import com.hedwig34.dsub.util.SilentBackgroundTask;
 import com.hedwig34.dsub.view.EntryAdapter;
 
 import java.io.Serializable;
@@ -49,7 +48,7 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 	private static final String TAG = SelectDirectoryFragment.class.getSimpleName();
 
 	private DragSortListView entryList;
-	int rootId;
+	int rootId = -1;
 	private View emptyView;
 	private boolean hideButtons = false;
 	private Boolean licenseValid;
@@ -69,11 +68,10 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 	int albumListSize;
 	boolean refreshListing = false;
 	boolean showAll = false;
-	
+	boolean restoredInstance = false;
 	
 	public SelectDirectoryFragment() {
 		super();
-		rootId = getNewId();
 	}
 
 	@Override
@@ -83,8 +81,10 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			int tmp = bundle.getInt(Constants.FRAGMENT_ID, -1);
 			if(tmp > 0) {
 				rootId = tmp;
+				maximizeIdGenerator(tmp);
 			}
 			entries = (List<MusicDirectory.Entry>) bundle.getSerializable(Constants.FRAGMENT_LIST);
+			restoredInstance = true;
 		}
 	}
 	
@@ -98,6 +98,9 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
 		rootView = inflater.inflate(R.layout.select_album, container, false);
+		if(rootId == -1) {
+			rootId = getNewId();
+		}
 		rootView.setId(rootId);
 
 		entryList = (DragSortListView) rootView.findViewById(R.id.select_album_entries);
@@ -131,10 +134,13 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			podcastId = args.getString(Constants.INTENT_EXTRA_NAME_PODCAST_ID);
 			podcastName = args.getString(Constants.INTENT_EXTRA_NAME_PODCAST_NAME);
 			podcastDescription = args.getString(Constants.INTENT_EXTRA_NAME_PODCAST_DESCRIPTION);
+			Object shareObj = args.getSerializable(Constants.INTENT_EXTRA_NAME_SHARE);
+			share = (shareObj != null) ? (Share) shareObj : null;
 			albumListType = args.getString(Constants.INTENT_EXTRA_NAME_ALBUM_LIST_TYPE);
 			albumListExtra = args.getString(Constants.INTENT_EXTRA_NAME_ALBUM_LIST_EXTRA);
 			albumListSize = args.getInt(Constants.INTENT_EXTRA_NAME_ALBUM_LIST_SIZE, 0);
 			refreshListing = args.getBoolean(Constants.INTENT_EXTRA_REFRESH_LISTINGS);
+			artist = args.getBoolean(Constants.INTENT_EXTRA_NAME_ARTIST, false);
 			if(entries == null) {
 				entries = (List<MusicDirectory.Entry>) args.getSerializable(Constants.FRAGMENT_LIST);
 			}
@@ -163,7 +169,7 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		if(licenseValid == null) {
 			menuInflater.inflate(R.menu.empty, menu);
 		}
-		else if(hideButtons) {
+		else if(hideButtons && !showAll) {
 			if(albumListType != null) {
 				menuInflater.inflate(R.menu.select_album_list, menu);
 			} else {
@@ -197,6 +203,10 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 					menuInflater.inflate(R.menu.select_podcast_episode, menu);
 				}
 			}
+		}
+
+		if("starred".equals(albumListType)) {
+			menuInflater.inflate(R.menu.unstar, menu);
 		}
 	}
 
@@ -245,6 +255,10 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			case R.id.menu_show_all:
 				showAll = true;
 				refresh(true);
+				return true;
+			case R.id.menu_unstar:
+				unstarSelected();
+				return true;
 		}
 
 		if(super.onOptionsItemSelected(item)) {
@@ -266,7 +280,7 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			menu.removeItem(R.id.song_menu_remove_playlist);
 		}
 		// Remove show artists if parent is not set and if not on a album list
-		if((albumListType == null || entry.getParent() == null) && !Util.isOffline(context)) {
+		if((albumListType == null || (entry.getParent() == null && entry.getArtistId() == null)) && !Util.isOffline(context)) {
 			menu.removeItem(R.id.album_menu_show_artist);
 		}
 		if(podcastId != null && !Util.isOffline(context)) {
@@ -316,6 +330,12 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 				Bundle args = new Bundle();
 				args.putString(Constants.INTENT_EXTRA_NAME_ID, entry.getId());
 				args.putString(Constants.INTENT_EXTRA_NAME_NAME, entry.getTitle());
+				if ("newest".equals(albumListType)) {
+					args.putBoolean(Constants.INTENT_EXTRA_REFRESH_LISTINGS, true);
+				}
+				if(entry.getArtist() == null && entry.getParent() == null) {
+					args.putBoolean(Constants.INTENT_EXTRA_NAME_ARTIST, true);
+				}
 				fragment.setArguments(args);
 
 				replaceFragment(fragment, rootId, true);
@@ -351,6 +371,10 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 	public int getRootId() {
 		return rootId;
 	}
+	public int setRootId() {
+		rootId = getNewId();
+		return rootId;
+	}
 
 	private void load(boolean refresh) {
 		if(refreshListing) {
@@ -363,6 +387,12 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			getPlaylist(playlistId, playlistName, refresh);
 		} else if(podcastId != null) {
 			getPodcast(podcastId, podcastName, refresh);
+		} else if (share != null) {
+			if(showAll) {
+				getRecursiveMusicDirectory(share.getId(), share.getName(), refresh);
+			} else {
+				getShare(share, refresh);
+			}
 		} else if (albumListType != null) {
 			getAlbumList(albumListType, albumListSize);
 		} else {
@@ -380,7 +410,7 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		new LoadTask() {
 			@Override
 			protected MusicDirectory load(MusicService service) throws Exception {
-				return service.getMusicDirectory(id, name, refresh, context, this);
+				return getMusicDirectory(id, name, refresh, service, this);
 			}
 			
 			@Override
@@ -397,7 +427,12 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		new LoadTask() {
 			@Override
 			protected MusicDirectory load(MusicService service) throws Exception {
-				MusicDirectory root = service.getMusicDirectory(id, name, refresh, context, this);
+				MusicDirectory root;
+				if(share == null) {
+					root = getMusicDirectory(id, name, refresh, service, this);
+				} else {
+					root = share.getMusicDirectory();
+				}
 				List<MusicDirectory.Entry> songs = new ArrayList<MusicDirectory.Entry>();
 				getSongsRecursively(root, songs);
 				root.replaceChildren(songs);
@@ -408,7 +443,14 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 				songs.addAll(parent.getChildren(false, true));
 				for (MusicDirectory.Entry dir : parent.getChildren(true, false)) {
 					MusicService musicService = MusicServiceFactory.getMusicService(context);
-					getSongsRecursively(musicService.getMusicDirectory(dir.getId(), dir.getTitle(), refresh, context, this), songs);
+
+					MusicDirectory musicDirectory;
+					if(Util.isTagBrowsing(context) && !Util.isOffline(context)) {
+						musicDirectory = musicService.getAlbum(dir.getId(), dir.getTitle(), false, context, this);
+					} else {
+						musicDirectory = musicService.getMusicDirectory(dir.getId(), dir.getTitle(), false, context, this);
+					}
+					getSongsRecursively(musicDirectory, songs);
 				}
 			}
 			
@@ -442,6 +484,17 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		}.execute();
 	}
 
+	private void getShare(final Share share, final boolean refresh) {
+		setTitle(share.getName());
+
+		new LoadTask() {
+			@Override
+			protected MusicDirectory load(MusicService service) throws Exception {
+				return share.getMusicDirectory();
+			}
+		}.execute();
+	}
+
 	private void getAlbumList(final String albumListType, final int size) {
 		showHeader = false;
 
@@ -469,6 +522,9 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 					result = service.getStarredList(context, this);
 				} else if(("genres".equals(albumListType) && Util.checkServerVersion(context, "1.10.0")) || "years".equals(albumListType)) {
 					result = service.getAlbumList(albumListType, albumListExtra, size, 0, context, this);
+					if(result.getChildrenSize() == 0 && "genres".equals(albumListType)) {
+						result = service.getSongsByGenre(albumListExtra, size, 0, context, this);
+					}
 				} else if("genres".equals(albumListType)) {
 					result = service.getSongsByGenre(albumListExtra, size, 0, context, this);
 				} else {
@@ -537,7 +593,7 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 
         Bundle args = getArguments();
         boolean playAll = args.getBoolean(Constants.INTENT_EXTRA_NAME_AUTOPLAY, false);
-        if (playAll) {
+        if (playAll && !restoredInstance) {
             playAll(args.getBoolean(Constants.INTENT_EXTRA_NAME_SHUFFLE, false), false);
         }
     }
@@ -564,7 +620,7 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			}
 		}
 
-		if (hasSubFolders && id != null) {
+		if (hasSubFolders && (id != null || share != null)) {
 			downloadRecursively(id, false, append, !append, shuffle, false);
 		} else {
 			selectAll(true, false);
@@ -824,6 +880,64 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		});
 	}
 
+	public void unstarSelected() {
+		List<MusicDirectory.Entry> selected = getSelectedSongs();
+		if(selected.size() == 0) {
+			selected = entries;
+		}
+		if(selected.size() == 0) {
+			return;
+		}
+		final List<MusicDirectory.Entry> unstar = new ArrayList<MusicDirectory.Entry>();
+		unstar.addAll(selected);
+
+		new LoadingTask<Void>(context, true) {
+			@Override
+			protected Void doInBackground() throws Throwable {
+				MusicService musicService = MusicServiceFactory.getMusicService(context);
+				List<String> ids = new ArrayList<String>();
+				List<String> artists = new ArrayList<String>();
+				List<String> albums = new ArrayList<String>();
+				for(MusicDirectory.Entry entry: unstar) {
+					if(entry.isDirectory()) {
+						if(entry.getArtist() == null || entry.getParent() == null) {
+							artists.add(entry.getId());
+						} else {
+							albums.add(entry.getId());
+						}
+					} else {
+						ids.add(entry.getId());
+					}
+				}
+				musicService.setStarred(ids, artists, albums, false, context, this);
+				return null;
+			}
+
+			@Override
+			protected void done(Void result) {
+				Util.toast(context, context.getResources().getString(R.string.starring_content_unstarred, Integer.toString(unstar.size())));
+
+				for(MusicDirectory.Entry entry: unstar) {
+					entries.remove(entry);
+				}
+				entryAdapter.notifyDataSetChanged();
+				selectAll(false, false);
+			}
+
+			@Override
+			protected void error(Throwable error) {
+				String msg;
+				if (error instanceof OfflineException || error instanceof ServerTooOldException) {
+					msg = getErrorMessage(error);
+				} else {
+					msg = context.getResources().getString(R.string.starring_content_error, Integer.toString(unstar.size())) + " " + getErrorMessage(error);
+				}
+
+				Util.toast(context, msg, false);
+			}
+		}.execute();
+	}
+
 	private void checkLicenseAndTrialPeriod(LoadingTask onValid) {
 		if (licenseValid) {
 			onValid.execute();
@@ -915,17 +1029,23 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			titleView.setPadding(0, 6, 4, 8);
 		} else if(name != null) {
 			titleView.setText(name);
+		} else if(share != null) {
+			titleView.setVisibility(View.GONE);
 		}
 
 		int songCount = 0;
 
 		Set<String> artists = new HashSet<String>();
+		Set<Integer> years = new HashSet<Integer>();
 		Integer totalDuration = 0;
 		for (MusicDirectory.Entry entry : entries) {
 			if (!entry.isDirectory()) {
 				songCount++;
 				if (entry.getArtist() != null) {
 					artists.add(entry.getArtist());
+				}
+				if(entry.getYear() != null) {
+					years.add(entry.getYear());
 				}
 				Integer duration = entry.getDuration();
 				if(duration != null) {
@@ -940,7 +1060,11 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 			artistView.setSingleLine(false);
 			artistView.setLines(5);
 		} else if (artists.size() == 1) {
-			artistView.setText(artists.iterator().next());
+			String artistText = artists.iterator().next();
+			if(years.size() == 1) {
+				artistText += " - " + years.iterator().next();
+			}
+			artistView.setText(artistText);
 			artistView.setVisibility(View.VISIBLE);
 		} else {
 			artistView.setVisibility(View.GONE);
@@ -955,6 +1079,20 @@ public class SelectDirectoryFragment extends SubsonicFragment implements Adapter
 		} else {
 			songCountView.setVisibility(View.GONE);
 			songLengthView.setVisibility(View.GONE);
+		}
+
+		if(add) {
+			ImageView shareButton = (ImageView) header.findViewById(R.id.select_album_share);
+			if(share != null || podcastId != null || !Util.getPreferences(context).getBoolean(Constants.PREFERENCES_KEY_MENU_SHARED, true)) {
+				shareButton.setVisibility(View.GONE);
+			} else {
+				shareButton.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View v) {
+						createShare(SelectDirectoryFragment.this.entries);
+					}
+				});
+			}
 		}
 
 		if(add) {

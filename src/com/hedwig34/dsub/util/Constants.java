@@ -59,6 +59,7 @@ public final class Constants {
 	public static final String INTENT_EXTRA_NAME_PODCAST_ID = "subsonic.podcast.id";
 	public static final String INTENT_EXTRA_NAME_PODCAST_NAME = "subsonic.podcast.name";
 	public static final String INTENT_EXTRA_NAME_PODCAST_DESCRIPTION = "subsonic.podcast.description";
+	public static final String INTENT_EXTRA_NAME_SHARE = "subsonic.share";
 	public static final String INTENT_EXTRA_FRAGMENT_TYPE = "fragmentType";
 	public static final String INTENT_EXTRA_REFRESH_LISTINGS = "refreshListings";
 
@@ -76,6 +77,7 @@ public final class Constants {
     public static final String PREFERENCES_KEY_SERVER_NAME = "serverName";
     public static final String PREFERENCES_KEY_SERVER_URL = "serverUrl";
 	public static final String PREFERENCES_KEY_SERVER_INTERNAL_URL = "serverInternalUrl";
+	public static final String PREFERENCES_KEY_SERVER_LOCAL_NETWORK_SSID = "serverLocalNetworkSSID";
 	public static final String PREFERENCES_KEY_SERVER_VERSION = "serverVersion";
 	public static final String PREFERENCES_KEY_TEST_CONNECTION = "serverTestConnection";
 	public static final String PREFERENCES_KEY_OPEN_BROWSER = "openBrowser";
@@ -112,6 +114,7 @@ public final class Constants {
 	public static final String PREFERENCES_KEY_KEEP_SCREEN_ON = "keepScreenOn";
 	public static final String PREFERENCES_KEY_BUFFER_LENGTH = "bufferLength";
 	public static final String PREFERENCES_EQUALIZER_ON = "equalizerOn";
+	public static final String PREFERENCES_VISUALIZER_ON = "visualizerOn";
 	public static final String PREFERENCES_EQUALIZER_SETTINGS = "equalizerSettings";
 	public static final String PREFERENCES_KEY_PERSISTENT_NOTIFICATION = "persistentNotification";
 	public static final String PREFERENCES_KEY_GAPLESS_PLAYBACK = "gaplessPlayback";
@@ -134,6 +137,9 @@ public final class Constants {
 	public static final String PREFERENCES_KEY_MENU_PLAY_NEXT = "showPlayNext";
 	public static final String PREFERENCES_KEY_MENU_PLAY_LAST = "showPlayLast";
 	public static final String PREFERENCES_KEY_MENU_STAR = "showStar";
+	public static final String PREFERENCES_KEY_MENU_SHARED = "showShared";
+	public static final String PREFERENCES_KEY_SHARED_ENABLED = "sharedEnabled";
+	public static final String PREFERENCES_KEY_BROWSE_TAGS = "browseTags";
 	
 	public static final String OFFLINE_SCROBBLE_COUNT = "scrobbleCount";
 	public static final String OFFLINE_SCROBBLE_ID = "scrobbleID";

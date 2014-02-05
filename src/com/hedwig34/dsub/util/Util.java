@@ -31,12 +31,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.AudioManager.OnAudioFocusChangeListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Environment;
@@ -64,6 +66,7 @@ import com.hedwig34.dsub.receiver.MediaButtonIntentReceiver;
 import com.hedwig34.dsub.service.DownloadFile;
 import com.hedwig34.dsub.service.DownloadService;
 import com.hedwig34.dsub.service.DownloadServiceImpl;
+
 import org.apache.http.HttpEntity;
 
 import java.io.ByteArrayOutputStream;
@@ -358,9 +361,12 @@ public final class Util {
 
 		String serverUrl = prefs.getString(Constants.PREFERENCES_KEY_SERVER_URL + instance, null);
 		if(allowAltAddress && Util.isWifiConnected(context)) {
-			String internalUrl = prefs.getString(Constants.PREFERENCES_KEY_SERVER_INTERNAL_URL + instance, null);
-			if(internalUrl != null && !"".equals(internalUrl) && !"http://".equals(internalUrl)) {
-				serverUrl = internalUrl;
+			String SSID = prefs.getString(Constants.PREFERENCES_KEY_SERVER_LOCAL_NETWORK_SSID + instance, "");
+			if("".equals(SSID) || SSID.equals(Util.getSSID(context))) {
+				String internalUrl = prefs.getString(Constants.PREFERENCES_KEY_SERVER_INTERNAL_URL + instance, null);
+				if(internalUrl != null && !"".equals(internalUrl) && !"http://".equals(internalUrl)) {
+					serverUrl = internalUrl;
+				}
 			}
 		}
 
@@ -382,9 +388,17 @@ public final class Util {
 
 		return builder.toString();
 	}
+
+	public static boolean isTagBrowsing(Context context) {
+		return isTagBrowsing(context, Util.getActiveServer(context));
+	}
+	public static boolean isTagBrowsing(Context context, int instance) {
+		SharedPreferences prefs = getPreferences(context);
+		return prefs.getBoolean(Constants.PREFERENCES_KEY_BROWSE_TAGS + instance, false);
+	}
 	
 	public static String getVideoPlayerType(Context context) {
-		SharedPreferences prefs = getPreferences(context); 
+		SharedPreferences prefs = getPreferences(context);
 		return prefs.getString(Constants.PREFERENCES_KEY_VIDEO_PLAYER, "raw"); 
 	}
 
@@ -415,7 +429,14 @@ public final class Util {
 	}
 	
 	public static String parseOfflineIDSearch(Context context, String id, String cacheLocation) {
-		String name = id.replace(cacheLocation, "");
+		// Try to get this info based off of tags first
+		String name = parseOfflineIDSearch(id);
+		if(name != null) {
+			return name;
+		}
+
+		// Otherwise go nuts trying to parse from file structure
+		name = id.replace(cacheLocation, "");
 		if(name.startsWith("/")) {
 			name = name.substring(1);
 		}
@@ -450,6 +471,31 @@ public final class Util {
 		}
 		
 		return name;
+	}
+
+	public static String parseOfflineIDSearch(String id) {
+		MusicDirectory.Entry entry = new MusicDirectory.Entry();
+		File file = new File(id);
+
+		if(file.exists()) {
+			entry.loadMetadata(file);
+
+			if(entry.getArtist() != null) {
+				String title = file.getName();
+				int index = title.lastIndexOf(".");
+				title = index == -1 ? title : title.substring(0, index);
+				title = title.substring(title.indexOf('-') + 1);
+
+				String query = "artist:\"" + entry.getArtist() + "\"" +
+					" AND title:\"" + title + "\"";
+
+				return query;
+			} else {
+				return null;
+			}
+		} else {
+			return null;
+		}
 	}
 
     public static String getContentType(HttpEntity entity) {
@@ -794,6 +840,42 @@ public final class Util {
 		return string == null || "".equals(string) || "".equals(string.trim());
 	}
 
+	public static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+		// Raw height and width of image
+		final int height = options.outHeight;
+		final int width = options.outWidth;
+		int inSampleSize = 1;
+
+		if (height > reqHeight || width > reqWidth) {
+
+			// Calculate ratios of height and width to requested height and
+			// width
+			final int heightRatio = Math.round((float) height / (float) reqHeight);
+			final int widthRatio = Math.round((float) width / (float) reqWidth);
+
+			// Choose the smallest ratio as inSampleSize value, this will
+			// guarantee
+			// a final image with both dimensions larger than or equal to the
+			// requested height and width.
+			inSampleSize = heightRatio < widthRatio ? heightRatio : widthRatio;
+		}
+
+		return inSampleSize;
+	}
+
+	public static int getScaledHeight(double height, double width, int newWidth) {
+		// Try to keep correct aspect ratio of the original image, do not force a square
+		double aspectRatio = height / width;
+
+		// Assume the size given refers to the width of the image, so calculate the new height using
+		//	the previously determined aspect ratio
+		return (int) Math.round(newWidth * aspectRatio);
+	}
+
+	public static int getScaledHeight(Bitmap bitmap, int width) {
+		return Util.getScaledHeight((double) bitmap.getHeight(), (double) bitmap.getWidth(), width);
+	}
+
     public static boolean isNetworkConnected(Context context) {
         ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = manager.getActiveNetworkInfo();
@@ -809,6 +891,16 @@ public final class Util {
 		NetworkInfo networkInfo = manager.getActiveNetworkInfo();
 		boolean connected = networkInfo != null && networkInfo.isConnected();
 		return connected && (networkInfo.getType() == ConnectivityManager.TYPE_WIFI);
+	}
+	public static String getSSID(Context context) {
+		if (isWifiConnected(context)) {
+			WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+			if (wifiManager.getConnectionInfo() != null && wifiManager.getConnectionInfo().getSSID() != null) {
+				return wifiManager.getConnectionInfo().getSSID().replace("\"", "");
+			}
+			return null;
+		}
+		return null;
 	}
 
     public static boolean isExternalStoragePresent() {
@@ -1163,32 +1255,15 @@ public final class Util {
 
             File albumArtFile = FileUtil.getAlbumArtFile(context, song);
             intent.putExtra("coverart", albumArtFile.getAbsolutePath());
-			
 			avrcpIntent.putExtra("playing", true);
-			avrcpIntent.putExtra("track", song.getTitle());
-			avrcpIntent.putExtra("artist", song.getArtist());
-			avrcpIntent.putExtra("album", song.getAlbum());
-			avrcpIntent.putExtra("ListSize",(long) downloadService.getSongs().size());
-			avrcpIntent.putExtra("id", (long) downloadService.getCurrentPlayingIndex()+1);
-			avrcpIntent.putExtra("duration", (long) downloadService.getPlayerDuration());
-			avrcpIntent.putExtra("position", (long) downloadService.getPlayerPosition());
-			avrcpIntent.putExtra("coverart", albumArtFile.getAbsolutePath());
         } else {
             intent.putExtra("title", "");
             intent.putExtra("artist", "");
             intent.putExtra("album", "");
             intent.putExtra("coverart", "");
-			
 			avrcpIntent.putExtra("playing", false);
-			avrcpIntent.putExtra("track", "");
-			avrcpIntent.putExtra("artist", "");
-			avrcpIntent.putExtra("album", "");
-			avrcpIntent.putExtra("ListSize",(long)0);
-			avrcpIntent.putExtra("id", (long) 0);
-			avrcpIntent.putExtra("duration", (long )0);
-			avrcpIntent.putExtra("position", (long) 0);
-			avrcpIntent.putExtra("coverart", "");
         }
+		addTrackInfo(context, song, avrcpIntent);
 
         context.sendBroadcast(intent);
 		context.sendBroadcast(avrcpIntent);
@@ -1197,7 +1272,7 @@ public final class Util {
     /**
      * <p>Broadcasts the given player state as the one being set.</p>
      */
-    public static void broadcastPlaybackStatusChange(Context context, PlayerState state) {
+    public static void broadcastPlaybackStatusChange(Context context, MusicDirectory.Entry song, PlayerState state) {
         Intent intent = new Intent(EVENT_PLAYSTATE_CHANGED);
 		Intent avrcpIntent = new Intent(AVRCP_PLAYSTATE_CHANGED);
 
@@ -1221,10 +1296,36 @@ public final class Util {
             default:
                 return; // No need to broadcast.
         }
+		addTrackInfo(context, song, avrcpIntent);
 
         context.sendBroadcast(intent);
 		context.sendBroadcast(avrcpIntent);
     }
+
+	private static void addTrackInfo(Context context, MusicDirectory.Entry song, Intent intent) {
+		if (song != null) {
+			DownloadService downloadService = (DownloadServiceImpl)context;
+			File albumArtFile = FileUtil.getAlbumArtFile(context, song);
+
+			intent.putExtra("track", song.getTitle());
+			intent.putExtra("artist", song.getArtist());
+			intent.putExtra("album", song.getAlbum());
+			intent.putExtra("ListSize", (long) downloadService.getSongs().size());
+			intent.putExtra("id", (long) downloadService.getCurrentPlayingIndex() + 1);
+			intent.putExtra("duration", (long) downloadService.getPlayerDuration());
+			intent.putExtra("position", (long) downloadService.getPlayerPosition());
+			intent.putExtra("coverart", albumArtFile.getAbsolutePath());
+		} else {
+			intent.putExtra("track", "");
+			intent.putExtra("artist", "");
+			intent.putExtra("album", "");
+			intent.putExtra("ListSize", (long) 0);
+			intent.putExtra("id", (long) 0);
+			intent.putExtra("duration", (long) 0);
+			intent.putExtra("position", (long) 0);
+			intent.putExtra("coverart", "");
+		}
+	}
 
     /**
      * Resolves the default text color for notifications.

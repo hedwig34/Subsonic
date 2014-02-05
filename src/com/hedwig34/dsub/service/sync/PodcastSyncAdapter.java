@@ -60,11 +60,11 @@ public class PodcastSyncAdapter extends SubsonicSyncAdapter {
 		try {
 			// Only refresh if syncs exist (implies a server where supported)
 			if(podcastList.size() > 0) {
-				// Refresh podcast listings before syncing
-				musicService.refreshPodcasts(context, null);
-
 				// Just update podcast listings so user doesn't have to
 				musicService.getPodcastChannels(true, context, null);
+
+				// Refresh podcast listings before syncing
+				musicService.refreshPodcasts(context, null);
 			}
 
 			List<String> updated = new ArrayList<String>();
@@ -78,12 +78,12 @@ public class PodcastSyncAdapter extends SubsonicSyncAdapter {
 					for(MusicDirectory.Entry entry: podcasts.getChildren()) {
 						// Make sure podcast is valid and not already synced
 						if(entry.getId() != null && "completed".equals(((PodcastEpisode)entry).getStatus()) && !existingEpisodes.contains(entry.getId())) {
-							DownloadFile file = new DownloadFile(context, entry, true);
-							while(!file.isSaved() && !file.isFailedMax()) {
+							DownloadFile file = new DownloadFile(context, entry, false);
+							while(!file.isCompleteFileAvailable() && !file.isFailedMax()) {
 								file.downloadNow(musicService);
 							}
 							// Only add if actualy downloaded correctly
-							if(file.isSaved()) {
+							if(file.isCompleteFileAvailable()) {
 								existingEpisodes.add(entry.getId());
 								if(!updated.contains(podcasts.getName())) {
 									updated.add(podcasts.getName());

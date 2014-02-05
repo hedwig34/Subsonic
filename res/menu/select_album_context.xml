@@ -41,7 +41,7 @@
 
 	<item 
 		android:id="@+id/album_menu_delete"
-		android:title="@string/common.delete"/>
+		android:title="@string/menu.delete_cache"/>
 
 	<item
 		android:id="@+id/album_menu_show_artist"
@@ -51,5 +51,11 @@
 		<item
 			android:id="@+id/album_menu_star"
 			android:title="@string/common.star"/>
+	</group>
+
+	<group android:id="@+id/hide_share">
+		<item
+			android:id="@+id/album_menu_share"
+			android:title="@string/menu.share"/>
 	</group>
 </menu>

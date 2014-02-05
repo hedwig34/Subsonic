@@ -32,12 +32,13 @@
 	<string name="button_bar.podcasts">Podcasts</string>
 	<string name="button_bar.bookmarks">Marcadores</string>
 	<string name="button_bar.chat">Chat</string>
+	<string name="button_bar.shares">Compartidos</string>
 
     <string name="main.welcome_title">Bienvenido!</string>
     <string name="main.welcome_text">Bienvenido a DSub! Ahora la aplicación está configurada para usar el servidor de demostración de Subsonic. Cuando configures tu servidor personal (disponible en <b>subsonic.org</b>), accede a <b>Preferencias</b> y cambia la configuración para conectarte.</string>
 	<string name="main.about_title">Acerca de DSub</string>
 	<string name="main.about_text">Autor: Scott Jackson
-		\nEmail: daneren2005@gmail.com
+		\nEmail: dsub.android@gmail.com
 		\nVersión: %1$s
 		\nEspacio usado: %2$s of %3$s
 		\nEspacio disponible: %4$s of %5$s</string>
@@ -75,10 +76,12 @@
 	<string name="menu.set_timer">Ajustar temporizador</string>
 	<string name="menu.check_podcasts">Comprobar nuevos episodios</string>
 	<string name="menu.add_podcast">Añadir canal</string>
-	<string name="menu.cast">Enviar al dispositivo</string>
 	<string name="menu.keep_synced">Mantener sincronizado</string>
 	<string name="menu.stop_sync">Detener sincronización</string>
 	<string name="menu.show_all">Mostrar todo el contenido</string>
+	<string name="menu.show_artist">Mostrar artista</string>
+	<string name="menu.share">Compartir</string>
+	<string name="menu.delete_cache">Borrar cache</string>
 
     <string name="playlist.label">Listas de reproducción</string>
 	<string name="playlist.update_info">Actualizar información</string>
@@ -87,16 +90,7 @@
 	<string name="playlist.overwrite">Sobreescribir lista de reproducción actual</string>
 	<string name="playlist.add_to">Añadir a lista de reproducción</string>
 	<string name="playlist.create_new">Crear nueva</string>
-
-    <string name="help.label">Ayuda</string>
-    <string name="help.title">Bienvenido a DSub!</string>
-    <string name="help.back">Atrás</string>
-    <string name="help.close">Cerrar</string>
-    <string name="help.url">file:///android_asset/html/en/index.html</string>
-    <string name="help.loading">Cargando...</string>
-
-    <string name="play_video.loading">Cargando vídeo...</string>
-    <string name="play_video.noplugin">Por favor instala Adobe Flash player desde el Android Market.</string>
+	<string name="playlist.delete">Borrar lista de reproducción</string>
 
     <string name="search.label">Buscar</string>
     <string name="search.title">Buscar</string>
@@ -136,10 +130,10 @@
 	<string name="offline.sync_partial">%1$d de %2$d canciones sincronizadas</string>
 	<string name="offline.sync_error">Error al sincronizar canciones</string>
 
-	<string name="select_genre.empty">No se han encontrado géneros</string>
 	<string name="select_genre.blank">Vacío</string>
+	<string name="select_genre.songs">%d canciones</string>
+	<string name="select_genre.albums">%d albumes</string>
 
-	<string name="select_podcasts.empty">No se han encontrado podcasts</string>
 	<string name="select_podcasts.error">Ha habido un error descargando este podcast en el servidor. El servidor debe descargarlo antes.</string>
 	<string name="select_podcasts.skipped">Este podcast no ha sido descargado en el servidor. El servidor debe descargarlo antes.</string>
     <string name="select_podcasts.initializing">Este podcast está siendo reiniciado en el servidor. Por favor, actualice en unos segundos.</string>
@@ -152,8 +146,7 @@
 	<string name="select_podcasts.add_url">URL:</string>
 	<string name="select_podcasts.created_error">Error al agregar podcast</string>
 	<string name="select_podcasts.invalid_podcast_channel">Canal de podcast no valido: %s</string>
-
-    <string name="select_playlist.empty">No hay listas de reproducción guardadas en el servidor</string>
+	<string name="select_podcasts.delete">Borrar podcast</string>
 
     <string name="download.empty">Lista de reproducción vaía</string>
 	<string name="download.shuffle_loading">Cargando lista aleatoria...</string>
@@ -163,7 +156,6 @@
     <string name="download.menu_show_album">Mostrar disco</string>
     <string name="download.menu_lyrics">Letras</string>
     <string name="download.menu_remove">Eliminar de la cola</string>
-	<string name="download.menu_delete">Borrar cache</string>
     <string name="download.menu_remove_all">Borrar todo</string>
     <string name="download.menu_screen_on">Pantalla encendida</string>
     <string name="download.menu_screen_off">Pantalla apagada</string>
@@ -295,6 +287,7 @@
 	<string name="settings.network_timeout_30000">30 seconds</string>
 	<string name="settings.network_timeout_45000">45 seconds</string>
 	<string name="settings.network_timeout_60000">60 seconds</string>
+    <string name="settings.preload_0">0 canción</string>
     <string name="settings.preload_1">1 canción</string>
     <string name="settings.preload_2">2 canciones</string>
     <string name="settings.preload_3">3 canciones</string>
@@ -364,6 +357,45 @@
 	<string name="settings.sync_starred_summary">Descargar a caché automáticamente canciones, albumes y artistas que contengan estrella</string>
 	<string name="settings.sync_notification">Mostrar notificación de sincronización</string>
 	<string name="settings.sync_notification_summary">Mostrar una notificación tras haber sincronizado nuevo contenido</string>
+	<string name="settings.sync_interval_15">15 Minutos</string>
+	<string name="settings.sync_interval_30">30 Minutos</string>
+	<string name="settings.sync_interval_60">1 Hora</string>
+	<string name="settings.sync_interval_120">2 Horas</string>
+	<string name="settings.sync_interval_240">4 Horas</string>
+	<string name="settings.sync_interval_360">6 Horas</string>
+	<string name="settings.sync_interval_720">12 Horas</string>
+	<string name="settings.sync_interval_1440">Diariamente</string>
+	<string name="settings.menu_options.title">Opciones del menú opcionales</string>
+	<string name="settings.menu_options.play_next_summary">Mostrar Reproducir Siguiente en los menús</string>
+	<string name="settings.menu_options.play_last_summary">Mostrar Reproducir Anterior en menús</string>
+	<string name="settings.menu_options.star_summary">Mostrar estrella en menús</string>
+	<string name="settings.menu_options.shared_summary">Mostrar Compartir en menús</string>
+	<string name="settings.shares_enabled">Compartir habilitadoShares Enabled</string>
+	<string name="settings.shares_enabled_summary">Mostrar o no mostrar la lista de compartidos en el menú desplegable</string>
+	<string name="settings.server_internal_address">Dirección de red interna</string>
+	<string name="settings.browse_by_tags">Explorar por tags</string>
+	<string name="settings.browse_by_tags_summary">Explorar por tags en vez de por estructura de carpetas. Requiere Subsonic 4.7+</string>
+	<string name="settings.server_local_network_ssid" >SSID Red local</string>
+	<string name="settings.server_local_network_ssid_hint">SSID Actual: %s</string>
+
+	<string name="share.info">Dueño: %1$s
+		\nDescripción: %2$s
+		\nURL: %3$s
+		\nCreado: %4$s
+		\nÚltima visita: %5$s
+		\nExpira: %6$s
+		\nNúmero de visitas: %7$s
+	</string>
+	<string name="share.expires">Expira: %s</string>
+	<string name="share.expires_never">Nunca expira</string>
+	<string name="share.deleted">Compartición eliminada %s</string>
+	<string name="share.deleted_error">Error al eliminar compartición %s</string>
+	<string name="share.no_expiration">No expira</string>
+	<string name="share.expiration">Expira:</string>
+	<string name="share.updated_info">Información de compartición actualizada para %s</string>
+	<string name="share.updated_info_error">Error al actualizar información de compartición para %s</string>
+	<string name="share.via">Compartir vía</string>
+	<string name="share.delete">Borrar compartido</string>
 
 	<string name="sync.title">DSub: Nuevo contenido multimedia disponible</string>
 	<string name="sync.new_podcasts">Nuevos podcasts: %s</string>

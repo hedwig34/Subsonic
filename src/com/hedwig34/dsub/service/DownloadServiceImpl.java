@@ -93,6 +93,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 	private boolean isPartial = true;
     private final List<DownloadFile> downloadList = new ArrayList<DownloadFile>();
 	private final List<DownloadFile> backgroundDownloadList = new ArrayList<DownloadFile>();
+	private final List<DownloadFile> toDelete = new ArrayList<DownloadFile>();
 	private final Handler handler = new Handler();
 	private Handler mediaPlayerHandler;
     private final DownloadServiceLifecycleSupport lifecycleSupport = new DownloadServiceLifecycleSupport(this);
@@ -103,6 +104,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
     private final Scrobbler scrobbler = new Scrobbler();
 	private RemoteController remoteController;
     private DownloadFile currentPlaying;
+	private int currentPlayingIndex = -1;
 	private DownloadFile nextPlaying;
     private DownloadFile currentDownloading;
     private CancellableTask bufferTask;
@@ -203,6 +205,10 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 		if(prefs.getBoolean(Constants.PREFERENCES_EQUALIZER_ON, false)) {
 			getEqualizerController();
 		}
+		if(prefs.getBoolean(Constants.PREFERENCES_VISUALIZER_ON, false)) {
+			getVisualizerController();
+			showVisualization = true;
+		}
     }
 
     @Override
@@ -297,10 +303,13 @@ public class DownloadServiceImpl extends Service implements DownloadService {
                 offset = 0;
             }
             for (MusicDirectory.Entry song : songs) {
-                DownloadFile downloadFile = new DownloadFile(this, song, save);
-                downloadList.add(getCurrentPlayingIndex() + offset, downloadFile);
-                offset++;
+				if(song != null) {
+					DownloadFile downloadFile = new DownloadFile(this, song, save);
+					downloadList.add(getCurrentPlayingIndex() + offset, downloadFile);
+					offset++;
+				}
             }
+			setNextPlaying();
             revision++;
         } else {
 			int size = size();
@@ -325,6 +334,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
         } else {
             if (currentPlaying == null) {
                 currentPlaying = downloadList.get(0);
+				currentPlayingIndex = 0;
 				currentPlaying.setPlaying(true);
             }
             checkDownloads();
@@ -351,7 +361,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
         }
     }
 
-    public void restore(List<MusicDirectory.Entry> songs, int currentPlayingIndex, int currentPlayingPosition) {
+    public void restore(List<MusicDirectory.Entry> songs, List<MusicDirectory.Entry> toDelete, int currentPlayingIndex, int currentPlayingPosition) {
 		SharedPreferences prefs = Util.getPreferences(this);
 		remoteState = RemoteControlState.values()[prefs.getInt(Constants.PREFERENCES_KEY_CONTROL_MODE, 0)];
 		if(remoteState != RemoteControlState.LOCAL) {
@@ -376,6 +386,12 @@ public class DownloadServiceImpl extends Service implements DownloadService {
             }
 			autoPlayStart = false;
         }
+
+		if(toDelete != null) {
+			for(MusicDirectory.Entry entry: toDelete) {
+				this.toDelete.add(forSong(entry));
+			}
+		}
     }
 
     @Override
@@ -398,9 +414,11 @@ public class DownloadServiceImpl extends Service implements DownloadService {
     @Override
     public synchronized void shuffle() {
         Collections.shuffle(downloadList);
+		currentPlayingIndex = downloadList.indexOf(currentPlaying);
         if (currentPlaying != null) {
             downloadList.remove(getCurrentPlayingIndex());
             downloadList.add(0, currentPlaying);
+			currentPlayingIndex = 0;
         }
         revision++;
         lifecycleSupport.serializeDownloadQueue();
@@ -442,7 +460,10 @@ public class DownloadServiceImpl extends Service implements DownloadService {
     @Override
     public void setShowVisualization(boolean showVisualization) {
         this.showVisualization = showVisualization;
-    }
+		SharedPreferences.Editor editor = Util.getPreferences(this).edit();
+		editor.putBoolean(Constants.PREFERENCES_VISUALIZER_ON, showVisualization);
+		editor.commit();
+	}
 
     @Override
     public synchronized DownloadFile forSong(MusicDirectory.Entry song) {
@@ -488,6 +509,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 			currentDownloading = null;
 		}
 		backgroundDownloadList.clear();
+		Util.hideDownloadingNotification(this);
 	}
 
     @Override
@@ -520,7 +542,11 @@ public class DownloadServiceImpl extends Service implements DownloadService {
     			currentPlaying.delete();
     		}
     	}
-    	
+		for(DownloadFile podcast: toDelete) {
+			podcast.delete();
+		}
+		toDelete.clear();
+
         reset();
         downloadList.clear();
         revision++;
@@ -540,6 +566,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 	@Override
     public synchronized void remove(int which) {
 		downloadList.remove(which);
+		currentPlayingIndex = downloadList.indexOf(currentPlaying);
 	}
 
     @Override
@@ -553,6 +580,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
             setCurrentPlaying(null, false);
         }
         downloadList.remove(downloadFile);
+		currentPlayingIndex = downloadList.indexOf(currentPlaying);
 		backgroundDownloadList.remove(downloadFile);
         revision++;
         lifecycleSupport.serializeDownloadQueue();
@@ -589,6 +617,11 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 			this.currentPlaying.setPlaying(false);
 		}
         this.currentPlaying = currentPlaying;
+		if(currentPlaying == null) {
+			currentPlayingIndex = -1;
+		} else {
+			currentPlayingIndex = downloadList.indexOf(currentPlaying);
+		}
 
         if (currentPlaying != null) {
         	Util.broadcastNewTrackInfo(this, currentPlaying.getSong());
@@ -626,8 +659,8 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 	}
 
     @Override
-    public synchronized int getCurrentPlayingIndex() {
-        return downloadList.indexOf(currentPlaying);
+    public int getCurrentPlayingIndex() {
+        return currentPlayingIndex;
     }
     private int getNextPlayingIndex() {
     	int index = getCurrentPlayingIndex();
@@ -662,6 +695,8 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 	public List<DownloadFile> getSongs() {
 		return downloadList;
 	}
+
+	public List<DownloadFile> getToDelete() { return toDelete; }
 
     @Override
     public synchronized List<DownloadFile> getDownloads() {
@@ -735,6 +770,9 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 		// Swap the media players since nextMediaPlayer is ready to play
 		if(start) {
 			nextMediaPlayer.start();
+		} else if(!nextMediaPlayer.isPlaying()) {
+			Log.w(TAG, "nextSetup lied about it's state!");
+			nextMediaPlayer.start();
 		} else {
 			Log.i(TAG, "nextMediaPlayer already playing");
 		}
@@ -787,15 +825,30 @@ public class DownloadServiceImpl extends Service implements DownloadService {
         }
 
         // Restart song if played more than five seconds.
-        if (getPlayerPosition() > 5000 || index == 0) {
+        if (getPlayerPosition() > 5000 || (index == 0 && getRepeatMode() != RepeatMode.ALL)) {
             play(index);
         } else {
+			if(index == 0) {
+				index = size();
+			}
+
             play(index - 1);
         }
     }
 
     @Override
     public synchronized void next() {
+		// Delete podcast if fully listened to
+		if(currentPlaying != null && currentPlaying.getSong() instanceof PodcastEpisode) {
+			int duration = getPlayerDuration();
+
+			// Make sure > 90% of the way through
+			int cutoffPoint = (int)(duration * 0.90);
+			if(duration > 0 && cachedPosition > cutoffPoint) {
+				toDelete.add(currentPlaying);
+			}
+		}
+
         int index = getCurrentPlayingIndex();
 		int nextPlayingIndex = getNextPlayingIndex();
 		// Make sure to actually go to next when repeat song is on
@@ -803,7 +856,17 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 			nextPlayingIndex++;
 		}
         if (index != -1 && nextPlayingIndex < size()) {
-            play(nextPlayingIndex);
+			if(nextPlaying != null && downloadList.get(nextPlayingIndex) == nextPlaying && nextPlayerState == PlayerState.PREPARED && remoteState == RemoteControlState.LOCAL) {
+				if(mediaPlayer.isPlaying()) {
+					mediaPlayer.stop();
+				}
+				mediaPlayer.setOnErrorListener(null);
+				mediaPlayer.setOnCompletionListener(null);
+				mediaPlayer.reset();
+				playNext(true);
+			} else {
+	            play(nextPlayingIndex);
+			}
         }
     }
 
@@ -924,7 +987,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
         boolean show = playerState == PlayerState.STARTED;
         boolean pause = playerState == PlayerState.PAUSED;
 		boolean hide = playerState == PlayerState.STOPPED;
-        Util.broadcastPlaybackStatusChange(this, playerState);
+        Util.broadcastPlaybackStatusChange(this, (currentPlaying != null) ? currentPlaying.getSong() : null, playerState);
 
         this.playerState = playerState;
 		
@@ -1272,6 +1335,11 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 				Log.i(TAG, "Ending position " + pos + " of " + duration);
 				if (!isPartial || (downloadFile.isWorkDone() && (Math.abs(duration - pos) < 10000))) {
 					playNext();
+
+					// Finished loading, delete when list is cleared
+					if(downloadFile.getSong() instanceof PodcastEpisode) {
+						toDelete.add(downloadFile);
+					}
 				} else {
 					// If file is not completely downloaded, restart the playback from the current position.
 					synchronized (DownloadServiceImpl.this) {
@@ -1290,8 +1358,6 @@ public class DownloadServiceImpl extends Service implements DownloadService {
 						}
 					}
 				}
-
-				wakeLock.release();
 			}
 		});
 	}
@@ -1504,6 +1570,7 @@ public class DownloadServiceImpl extends Service implements DownloadService {
                 revision++;
             }
         }
+		currentPlayingIndex = downloadList.indexOf(currentPlaying);
 
         if (revisionBefore != revision) {
             updateJukeboxPlaylist();

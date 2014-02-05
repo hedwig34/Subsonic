@@ -6,6 +6,7 @@
 		<item>@string/button_bar.playlists</item>
 		<item>@string/button_bar.podcasts</item>
 		<item>@string/button_bar.bookmarks</item>
+		<item>@string/button_bar.shares</item>
 		<item>@string/button_bar.chat</item>
 		<item>@string/menu.settings</item>
 	</string-array>
@@ -16,6 +17,7 @@
 		<item>Playlist</item>
 		<item>Podcast</item>
 		<item>Bookmark</item>
+		<item>Share</item>
 		<item>Chat</item>
 		<item>Settings</item>
 	</string-array>
@@ -26,6 +28,7 @@
 		<item>@drawable/ic_menu_playlist_light</item>
 		<item>@drawable/ic_menu_podcast_light</item>
 		<item>@drawable/ic_menu_bookmark_light</item>
+		<item>@drawable/ic_menu_share_light</item>
 		<item>@drawable/ic_menu_chat_light</item>
 		<item>@drawable/ic_menu_settings_light</item>
 	</array>
@@ -36,6 +39,7 @@
 		<item>@drawable/ic_menu_playlist_dark</item>
 		<item>@drawable/ic_menu_podcast_dark</item>
 		<item>@drawable/ic_menu_bookmark_dark</item>
+		<item>@drawable/ic_menu_share_dark</item>
 		<item>@drawable/ic_menu_chat_dark</item>
 		<item>@drawable/ic_menu_settings_dark</item>
 	</array>
@@ -67,6 +71,7 @@
 	</string-array>
 
     <string-array name="preloadCountValues">
+		<item>0</item>
         <item>1</item>
         <item>2</item>
         <item>3</item>
@@ -76,7 +81,8 @@
     </string-array>
 
     <string-array name="preloadCountNames">
-        <item>@string/settings.preload_1</item>
+		<item>@string/settings.preload_0</item>
+		<item>@string/settings.preload_1</item>
         <item>@string/settings.preload_2</item>
         <item>@string/settings.preload_3</item>
         <item>@string/settings.preload_5</item>
@@ -205,14 +211,14 @@
 		<item>1440</item>
 	</string-array>
 	<string-array name="syncIntervalNames">
-		<item>15 Minutes</item>
-		<item>30 Minutes</item>
-		<item>1 Hour</item>
-		<item>2 Hours</item>
-		<item>3 Hours</item>
-		<item>6 Hours</item>
-		<item>12 Hours</item>
-		<item>Daily</item>
+		<item>@string/settings.sync_interval_15</item>
+		<item>@string/settings.sync_interval_30</item>
+		<item>@string/settings.sync_interval_60</item>
+		<item>@string/settings.sync_interval_120</item>
+		<item>@string/settings.sync_interval_240</item>
+		<item>@string/settings.sync_interval_360</item>
+		<item>@string/settings.sync_interval_720</item>
+		<item>@string/settings.sync_interval_1440</item>
 	</string-array>
 
 </resources>

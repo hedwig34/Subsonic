@@ -11,9 +11,10 @@ Replace the file DragSortListView/library/libs/android-support-v4.jar with the o
 
 Roadmap of major planned features in rough order that I plan to work on them in (little features get sprinkled in wherever):
 
-Background Sync
-	-Mark playlists as 'offline', syncs changes
-	-Mark podcasts as 'offline', download new episodes only
+Tag Browsing
+Album Art Grid View
+	-Display albums in a grid
+	-Display artists if supported (yes for tags, no for folders currently)
 RemoteControl
 	-Chromecast
 	-DLNA/UpNP Client
@@ -22,9 +23,35 @@ New Tabs
 	-Admin functions
 		-Change your password
 		-Create/delete users if admin
-	-Sharing tab
 	-Internet Radio tab
 HLS Video
 	-Display video where album art is currently (double tap to fullscreen)
 	-Videos can play inline with songs
+	
+
+I haven't felt like forking dragsortlistview properly, so local bugfixes:
+In DragSortListView.java line 741 above v.addView(child).  Fixes NPE:
+if(child.getParent() != null) {
+	((ViewGroup) child.getParent()).removeView(child);
+}
+
+In DragSortListView.java line 722, inside of child != oldChild statement. Fixes checkables mixed with non-checkables not being converted:
+if(child instanceof Checkable && !(v instanceof Checkable)) {
+	v = new DragSortItemViewCheckable(getContext());
+	v.setLayoutParams(new AbsListView.LayoutParams(
+		ViewGroup.LayoutParams.FILL_PARENT,
+		ViewGroup.LayoutParams.WRAP_CONTENT));
+} else if(!(child instanceof Checkable) && v instanceof Checkable) {
+	v = new DragSortItemView(getContext());
+	v.setLayoutParams(new AbsListView.LayoutParams(
+			ViewGroup.LayoutParams.FILL_PARENT,
+			ViewGroup.LayoutParams.WRAP_CONTENT));
+} else {
+	// shouldn't get here if user is reusing convertViews
+	// properly
+	if (oldChild != null) {
+		v.removeViewAt(0);
+	}
+}
+v.addView(child);
 	

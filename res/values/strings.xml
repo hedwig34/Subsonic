@@ -31,6 +31,7 @@
     <string name="button_bar.now_playing">Now Playing</string>
 	<string name="button_bar.podcasts">Podcasts</string>
 	<string name="button_bar.bookmarks">Bookmarks</string>
+	<string name="button_bar.shares">Shares</string>
 	<string name="button_bar.chat">Chat</string>
 
     <string name="main.welcome_title">Welcome!</string>
@@ -81,6 +82,8 @@
 	<string name="menu.stop_sync">Stop syncing</string>
 	<string name="menu.show_all">Show all media</string>
 	<string name="menu.show_artist">Show Artist</string>
+	<string name="menu.share">Share</string>
+	<string name="menu.delete_cache">Delete Cache</string>
 
     <string name="playlist.label">Playlists</string>
 	<string name="playlist.update_info">Update Information</string>
@@ -89,16 +92,7 @@
 	<string name="playlist.overwrite">Overwrite existing playlist</string>
 	<string name="playlist.add_to">Add to Playlist</string>
 	<string name="playlist.create_new">Create New</string>
-
-    <string name="help.label">Help</string>
-    <string name="help.title">Welcome to DSub!</string>
-    <string name="help.back">Back</string>
-    <string name="help.close">Close</string>
-    <string name="help.url">file:///android_asset/html/en/index.html</string>
-    <string name="help.loading">Loading...</string>
-
-    <string name="play_video.loading">Loading video...</string>
-    <string name="play_video.noplugin">Please install Adobe Flash Player from Android Market.</string>
+	<string name="playlist.delete">Delete Playlist</string>
 
     <string name="search.label">Search</string>
     <string name="search.title">Search</string>
@@ -139,6 +133,8 @@
 	<string name="offline.sync_error">Failed to sync songs</string>
 
 	<string name="select_genre.blank">Blank</string>
+	<string name="select_genre.songs">%d songs</string>
+	<string name="select_genre.albums">%d albums</string>
 
 	<string name="select_podcasts.error">This podcast had an error while downloading on the server.  The server must download it first.</string>
 	<string name="select_podcasts.skipped">This podcast has not been downloaded on the server.  The server must download it first.</string>
@@ -152,6 +148,7 @@
 	<string name="select_podcasts.add_url">URL:</string>
 	<string name="select_podcasts.created_error">Failed to add podcast</string>
 	<string name="select_podcasts.invalid_podcast_channel">Invalid podcast channel: %s</string>
+	<string name="select_podcasts.delete">Delete podcast</string>
 
     <string name="download.empty">Playlist is empty</string>
 	<string name="download.shuffle_loading">Shuffle list is loading...</string>
@@ -161,7 +158,6 @@
     <string name="download.menu_show_album">Show album</string>
     <string name="download.menu_lyrics">Lyrics</string>
     <string name="download.menu_remove">Remove from queue</string>
-	<string name="download.menu_delete">Delete cache</string>
     <string name="download.menu_remove_all">Remove all</string>
     <string name="download.menu_screen_on">Screen on</string>
     <string name="download.menu_screen_off">Screen off</string>
@@ -187,7 +183,7 @@
     <string name="download.jukebox_not_authorized">Remote control is not allowed. Please enable jukebox mode in <b>Users &gt; Settings</b> on your Subsonic server.</string>
 	<string name="download.show_downloading">Show Downloading</string>
 	<string name="download.show_now_playing">Show Now Playing</string>
-	<string name="download.timer_length">Timer Length</string>
+	<string name="download.timer_length">Timer:</string>
 	<string name="download.start_timer">Start Timer</string>
 	<string name="download.stop_timer">Stop Timer</string>
 	<string name="download.need_download">Video needs to be downloaded first</string>
@@ -242,7 +238,9 @@
     <string name="settings.server_unused">Unused</string>
     <string name="settings.server_name">Name</string>
     <string name="settings.server_address">Server address</string>
-	<string name="settings.server_internal_address">Internal network address</string>
+	<string name="settings.server_local_network_ssid" >Local network SSID</string>
+	<string name="settings.server_local_network_ssid_hint">Current SSID: %s</string>
+	<string name="settings.server_internal_address">Local network address</string>
     <string name="settings.server_username">Username</string>
     <string name="settings.server_password">Password</string>
 	<string name="settings.server_open_browser">Open in browser</string>
@@ -306,6 +304,7 @@
 	<string name="settings.network_timeout_30000">30 seconds</string>
 	<string name="settings.network_timeout_45000">45 seconds</string>
 	<string name="settings.network_timeout_60000">60 seconds</string>
+    <string name="settings.preload_0">0 song</string>
     <string name="settings.preload_1">1 song</string>
     <string name="settings.preload_2">2 songs</string>
     <string name="settings.preload_3">3 songs</string>
@@ -363,10 +362,20 @@
 	<string name="settings.podcasts_enabled_summary">Whether or not to display the podcast listing in the pull out drawer</string>
 	<string name="settings.bookmarks_enabled">Bookmarks Enabled</string>
 	<string name="settings.bookmarks_enabled_summary">Whether or not to display the bookmarks listing in the pull out drawer</string>
+	<string name="settings.shares_enabled">Shares Enabled</string>
+	<string name="settings.shares_enabled_summary">Whether or not to display the shares listing in the pull out drawer</string>
 	<string name="settings.sync_title">Sync</string>
 	<string name="settings.sync_enabled">Sync Enabled</string>
 	<string name="settings.sync_enabled_summary">Whether or not playlists or podcasts are periodically checked for changes</string>
 	<string name="settings.sync_interval">Sync Interval</string>
+	<string name="settings.sync_interval_15">15 Minutes</string>
+	<string name="settings.sync_interval_30">30 Minutes</string>
+	<string name="settings.sync_interval_60">1 Hour</string>
+	<string name="settings.sync_interval_120">2 Hours</string>
+	<string name="settings.sync_interval_240">4 Hours</string>
+	<string name="settings.sync_interval_360">6 Hours</string>
+	<string name="settings.sync_interval_720">12 Hours</string>
+	<string name="settings.sync_interval_1440">Daily</string>
 	<string name="settings.sync_wifi">Sync on Wifi only</string>
 	<string name="settings.sync_wifi_summary">Only sync while on wifi</string>
 	<string name="settings.sync_most_recent">Sync Recently Added</string>
@@ -376,18 +385,38 @@
 	<string name="settings.sync_notification">Show Sync Notification</string>
 	<string name="settings.sync_notification_summary">Show a notification after new media has been synced</string>
 	<string name="settings.menu_options.title">Optional Menu Options</string>
-	<string name="settings.menu_options.play_next">Play Next</string>
 	<string name="settings.menu_options.play_next_summary">Show Play next in menus</string>
-	<string name="settings.menu_options.play_last">Play Last</string>
 	<string name="settings.menu_options.play_last_summary">Show Play last in menus</string>
-	<string name="settings.menu_options.star">Star</string>
 	<string name="settings.menu_options.star_summary">Show Star in menus</string>
+	<string name="settings.menu_options.shared_summary">Show Share in menus</string>
+	<string name="settings.browse_by_tags">Browse By Tags</string>
+	<string name="settings.browse_by_tags_summary">Browse by tags instead of by folder structure.  Requires Subsonic 4.7+</string>
 
 	<string name="shuffle.title">Shuffle By</string>
 	<string name="shuffle.startYear">Start Year:</string>
 	<string name="shuffle.endYear">End Year:</string>
 	<string name="shuffle.genre">Genre:</string>
 	<string name="shuffle.pick_genre">Pick a genre</string>
+
+	<string name="share.info">Owner: %1$s
+		\nDescription: %2$s
+		\nURL: %3$s
+		\nCreation: %4$s
+		\nLast Visited: %5$s
+		\nExpiration: %6$s
+		\nVisit Count: %7$s
+
+	</string>
+	<string name="share.expires">Expires: %s</string>
+	<string name="share.expires_never">Never Expires</string>
+	<string name="share.deleted">Deleted share %s</string>
+	<string name="share.deleted_error">Failed to delete share %s</string>
+	<string name="share.no_expiration">No expiration</string>
+	<string name="share.expiration">Expires:</string>
+	<string name="share.updated_info">Updated share information for %s</string>
+	<string name="share.updated_info_error">Failed to update share information for %s</string>
+	<string name="share.via">Share via</string>
+	<string name="share.delete">Delete Share</string>
 
     <string name="music_service.retry">A network error occurred. Retrying %1$d of %2$d.</string>
 
@@ -407,6 +436,7 @@
     <string name="parser.not_authenticated">Wrong username or password.</string>
     <string name="parser.not_authorized">Not authorized. Check user permissions in Subsonic server.</string>
     <string name="parser.artist_count">Got %d artists.</string>
+	<string name="parser.server_error">Server error: %s</string>
 
     <string name="select_artist.refresh">Refresh</string>
     <string name="select_artist.folder">Select folder</string>

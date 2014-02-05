@@ -94,7 +94,16 @@ public class DownloadFile {
         return song.getBitRate() == null ? 160 : song.getBitRate();
     }
 	private int getActualBitrate() {
-		return song.isVideo() ? Util.getMaxVideoBitrate(context) : Util.getMaxBitrate(context);
+		int br = song.isVideo() ? Util.getMaxVideoBitrate(context) : Util.getMaxBitrate(context);
+		if(br == 0 && song.getTranscodedSuffix() != null && "mp3".equals(song.getTranscodedSuffix().toLowerCase())) {
+			if(song.getBitRate() != null) {
+				br = Math.min(320, song.getBitRate());
+			} else {
+				br = 320;
+			}
+		}
+
+		return br;
 	}
 	
 	public Integer getContentLength() {
@@ -390,7 +399,7 @@ public class DownloadFile {
                 if (song.getCoverArt() != null) {
                     DisplayMetrics metrics = context.getResources().getDisplayMetrics();
                     int size = Math.min(metrics.widthPixels, metrics.heightPixels);
-                    musicService.getCoverArt(context, song, size, size, null);
+                    musicService.getCoverArt(context, song, size, null);
                 }
             } catch (Exception x) {
                 Log.e(TAG, "Failed to get cover art.", x);

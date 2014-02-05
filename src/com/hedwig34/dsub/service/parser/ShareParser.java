@@ -19,9 +19,15 @@
 package com.hedwig34.dsub.service.parser;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.util.Log;
+
 import com.hedwig34.dsub.R;
 import com.hedwig34.dsub.domain.Share;
+import com.hedwig34.dsub.util.Constants;
 import com.hedwig34.dsub.util.ProgressListener;
+import com.hedwig34.dsub.util.Util;
+
 import org.xmlpull.v1.XmlPullParser;
 import java.io.Reader;
 import java.util.ArrayList;
@@ -31,8 +37,9 @@ import java.util.List;
  * @author Joshua Bahnsen
  */
 public class ShareParser extends MusicDirectoryEntryParser {
+	private static final String TAG = ShareParser.class.getSimpleName();
 
-    public ShareParser(Context context) {
+	public ShareParser(Context context) {
         super(context);
     }
 
@@ -44,6 +51,14 @@ public class ShareParser extends MusicDirectoryEntryParser {
         List<Share> dir = new ArrayList<Share>();
         Share share = null;
         int eventType;
+
+		SharedPreferences prefs = Util.getPreferences(context);
+		int instance = prefs.getInt(Constants.PREFERENCES_KEY_SERVER_INSTANCE, 1);
+		String serverUrl = prefs.getString(Constants.PREFERENCES_KEY_SERVER_URL + instance, null);
+		if(serverUrl.charAt(serverUrl.length() - 1) != '/') {
+			serverUrl += '/';
+		}
+		serverUrl += "share/";
         
         do {
             eventType = nextParseEvent();
@@ -54,15 +69,18 @@ public class ShareParser extends MusicDirectoryEntryParser {
                 if ("share".equals(name)) {
                 	share = new Share();
                 	share.setCreated(get("created"));
+					share.setUrl(get("url").replaceFirst(".*/([^/?]+).*", serverUrl + "$1"));
                 	share.setDescription(get("description"));
                 	share.setExpires(get("expires"));
                 	share.setId(get("id"));
                 	share.setLastVisited(get("lastVisited"));
-                	share.setUrl(get("url"));
                 	share.setUsername(get("username"));
                 	share.setVisitCount(getLong("visitCount"));
+					dir.add(share);
                 } else if ("entry".equals(name)) {
-                	share.addEntry(parseEntry(null));
+					if(share != null) {
+                		share.addEntry(parseEntry(null));
+					}
                 } else if ("error".equals(name)) {
                     handleError();
                 }

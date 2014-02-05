@@ -53,6 +53,7 @@ import com.hedwig34.dsub.fragments.SelectBookmarkFragment;
 import com.hedwig34.dsub.fragments.SelectDirectoryFragment;
 import com.hedwig34.dsub.fragments.SelectPlaylistFragment;
 import com.hedwig34.dsub.fragments.SelectPodcastsFragment;
+import com.hedwig34.dsub.fragments.SelectShareFragment;
 import com.hedwig34.dsub.fragments.SubsonicFragment;
 import com.hedwig34.dsub.service.DownloadFile;
 import com.hedwig34.dsub.service.DownloadService;
@@ -188,9 +189,7 @@ public class SubsonicFragmentActivity extends SubsonicActivity {
 							return null;
 						}
 
-						if (getDownloadService().getCurrentPlayingIndex() < getDownloadService().size() - 1) {
-							getDownloadService().next();
-						}
+						getDownloadService().next();
 						return null;
 					}
 
@@ -266,20 +265,24 @@ public class SubsonicFragmentActivity extends SubsonicActivity {
 		if(getIntent().hasExtra(Constants.INTENT_EXTRA_VIEW_ALBUM)) {
 			int fragmentID = currentFragment != null ? currentFragment.getRootId() : R.id.fragment_list_layout;
 			if(getIntent().hasExtra(Constants.INTENT_EXTRA_NAME_PARENT_ID)) {
-				SubsonicFragment fragment = new SelectDirectoryFragment();
+				SelectDirectoryFragment fragment = new SelectDirectoryFragment();
 				Bundle args = new Bundle();
 				args.putString(Constants.INTENT_EXTRA_NAME_ID, getIntent().getStringExtra(Constants.INTENT_EXTRA_NAME_PARENT_ID));
 				args.putString(Constants.INTENT_EXTRA_NAME_NAME, getIntent().getStringExtra(Constants.INTENT_EXTRA_NAME_PARENT_NAME));
+				args.putBoolean(Constants.INTENT_EXTRA_NAME_ARTIST, true);
 				fragment.setArguments(args);
 
 				replaceFragment(fragment, R.id.fragment_list_layout, currentFragment.getSupportTag());
-				fragmentID = fragment.getRootId();
+				fragmentID = fragment.setRootId();
 			}
 
 			SubsonicFragment fragment = new SelectDirectoryFragment();
 			Bundle args = new Bundle();
 			args.putString(Constants.INTENT_EXTRA_NAME_ID, getIntent().getStringExtra(Constants.INTENT_EXTRA_NAME_ID));
 			args.putString(Constants.INTENT_EXTRA_NAME_NAME, getIntent().getStringExtra(Constants.INTENT_EXTRA_NAME_NAME));
+			if(getIntent().hasExtra(Constants.INTENT_EXTRA_NAME_ARTIST)) {
+				args.putBoolean(Constants.INTENT_EXTRA_NAME_ARTIST, true);
+			}
 			fragment.setArguments(args);
 
 			replaceFragment(fragment, fragmentID, currentFragment.getSupportTag());
@@ -381,6 +384,8 @@ public class SubsonicFragmentActivity extends SubsonicActivity {
 			return new SelectPodcastsFragment();
 		} else if("Bookmark".equals(fragmentType)) {
 			return new SelectBookmarkFragment();
+		} else if("Share".equals(fragmentType)) {
+			return new SelectShareFragment();
 		} else {
 			return new MainFragment();
 		}

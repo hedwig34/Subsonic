@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +22,21 @@ public final class SyncUtil {
 	private static String TAG = SyncUtil.class.getSimpleName();
 	private static ArrayList<SyncSet> syncedPlaylists;
 	private static ArrayList<SyncSet> syncedPodcasts;
+	private static String url;
+
+	private static void checkRestURL(Context context) {
+		int instance = Util.getActiveServer(context);
+		String newURL = Util.getRestUrl(context, null, instance, false);
+		if(url == null || !url.equals(newURL)) {
+			syncedPlaylists = null;
+			syncedPodcasts = null;
+			url = newURL;
+		}
+	}
 
 	// Playlist sync
 	public static boolean isSyncedPlaylist(Context context, String playlistId) {
+		checkRestURL(context);
 		if(syncedPlaylists == null) {
 			syncedPlaylists = getSyncedPlaylists(context);
 		}
@@ -83,11 +96,12 @@ public final class SyncUtil {
 		return getPlaylistSyncFile(context, instance);
 	}
 	public static String getPlaylistSyncFile(Context context, int instance) {
-		return "sync-playlist-" + (Util.getRestUrl(context, null, instance)).hashCode() + ".ser";
+		return "sync-playlist-" + (Util.getRestUrl(context, null, instance, false)).hashCode() + ".ser";
 	}
 
 	// Podcast sync
 	public static boolean isSyncedPodcast(Context context, String podcastId) {
+		checkRestURL(context);
 		if(syncedPodcasts == null) {
 			syncedPodcasts = getSyncedPodcasts(context);
 		}
@@ -131,7 +145,7 @@ public final class SyncUtil {
 		return getPodcastSyncFile(context, instance);
 	}
 	public static String getPodcastSyncFile(Context context, int instance) {
-		return "sync-podcast-" + (Util.getRestUrl(context, null, instance)).hashCode() + ".ser";
+		return "sync-podcast-" + (Util.getRestUrl(context, null, instance, false)).hashCode() + ".ser";
 	}
 	
 	// Starred
@@ -146,7 +160,7 @@ public final class SyncUtil {
 		FileUtil.serializeCompressed(context, syncedList, SyncUtil.getStarredSyncFile(context, instance));
 	}
 	public static String getStarredSyncFile(Context context, int instance) {
-		return "sync-starred-" + (Util.getRestUrl(context, null, instance)).hashCode() + ".ser";
+		return "sync-starred-" + (Util.getRestUrl(context, null, instance, false)).hashCode() + ".ser";
 	}
 	
 	// Most Recently Added
@@ -157,8 +171,15 @@ public final class SyncUtil {
 		}
 		return list;
 	}
+	public static void removeMostRecentSyncFiles(Context context) {
+		int total = Util.getServerCount(context);
+		for(int i = 0; i < total; i++) {
+			File file = new File(context.getCacheDir(), getMostRecentSyncFile(context, i));
+			file.delete();
+		}
+	}
 	public static String getMostRecentSyncFile(Context context, int instance) {
-		return "sync-most_recent-" + (Util.getRestUrl(context, null, instance)).hashCode() + ".ser";
+		return "sync-most_recent-" + (Util.getRestUrl(context, null, instance, false)).hashCode() + ".ser";
 	}
 
 	public static void showSyncNotification(final Context context, int stringId, String extra) {

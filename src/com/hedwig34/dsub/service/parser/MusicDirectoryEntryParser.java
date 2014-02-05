@@ -32,8 +32,12 @@ public class MusicDirectoryEntryParser extends AbstractParser {
     protected MusicDirectory.Entry parseEntry(String artist) {
         MusicDirectory.Entry entry = new MusicDirectory.Entry();
         entry.setId(get("id"));
-        entry.setParent(get("parent"));
+		entry.setParent(get("parent"));
+		entry.setArtistId(get("artistId"));
         entry.setTitle(get("title"));
+		if(entry.getTitle() == null) {
+			entry.setTitle(get("name"));
+		}
         entry.setDirectory(getBoolean("isDir"));
         entry.setCoverArt(get("coverArt"));
         entry.setArtist(get("artist"));
@@ -43,6 +47,7 @@ public class MusicDirectoryEntryParser extends AbstractParser {
 
         if (!entry.isDirectory()) {
             entry.setAlbum(get("album"));
+			entry.setAlbumId(get("albumId"));
             entry.setTrack(getInteger("track"));
             entry.setContentType(get("contentType"));
             entry.setSuffix(get("suffix"));

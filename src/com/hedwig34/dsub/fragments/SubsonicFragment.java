@@ -28,6 +28,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -51,6 +52,7 @@ import com.hedwig34.dsub.domain.Genre;
 import com.hedwig34.dsub.domain.MusicDirectory;
 import com.hedwig34.dsub.domain.Playlist;
 import com.hedwig34.dsub.domain.PodcastEpisode;
+import com.hedwig34.dsub.domain.Share;
 import com.hedwig34.dsub.service.DownloadFile;
 import com.hedwig34.dsub.service.DownloadService;
 import com.hedwig34.dsub.service.DownloadServiceImpl;
@@ -61,6 +63,7 @@ import com.hedwig34.dsub.service.ServerTooOldException;
 import com.hedwig34.dsub.util.Constants;
 import com.hedwig34.dsub.util.FileUtil;
 import com.hedwig34.dsub.util.ImageLoader;
+import com.hedwig34.dsub.util.ProgressListener;
 import com.hedwig34.dsub.util.SilentBackgroundTask;
 import com.hedwig34.dsub.util.LoadingTask;
 import com.hedwig34.dsub.util.Util;
@@ -69,6 +72,7 @@ import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
@@ -90,6 +94,9 @@ public class SubsonicFragment extends Fragment {
 	protected boolean invalidated = false;
 	protected static Random random = new Random();
 	protected GestureDetector gestureScanner;
+	protected Share share;
+	protected boolean artist = false;
+	protected boolean artistOverride = false;
 	
 	public SubsonicFragment() {
 		super();
@@ -212,6 +219,9 @@ public class SubsonicFragment extends Fragment {
 		if(!prefs.getBoolean(Constants.PREFERENCES_KEY_MENU_STAR, true)) {
 			menu.setGroupVisible(R.id.hide_star, false);
 		}
+		if(!prefs.getBoolean(Constants.PREFERENCES_KEY_MENU_SHARED, true)) {
+			menu.setGroupVisible(R.id.hide_share, false);
+		}
 	}
 
 	protected void recreateContextMenu(ContextMenu menu) {
@@ -232,7 +242,7 @@ public class SubsonicFragment extends Fragment {
 	public boolean onContextItemSelected(MenuItem menuItem, Object selectedItem) {
 		Artist artist = selectedItem instanceof Artist ? (Artist) selectedItem : null;
 		MusicDirectory.Entry entry = selectedItem instanceof MusicDirectory.Entry ? (MusicDirectory.Entry) selectedItem : null;
-		List<MusicDirectory.Entry> songs = new ArrayList<MusicDirectory.Entry>(10);
+		List<MusicDirectory.Entry> songs = new ArrayList<MusicDirectory.Entry>(1);
 		songs.add(entry);
 
 		switch (menuItem.getItemId()) {
@@ -261,21 +271,27 @@ public class SubsonicFragment extends Fragment {
 				toggleStarred(artist);
 				break;
 			case R.id.album_menu_play_now:
+				artistOverride = true;
 				downloadRecursively(entry.getId(), false, false, true, false, false);
 				break;
 			case R.id.album_menu_play_shuffled:
+				artistOverride = true;
 				downloadRecursively(entry.getId(), false, false, true, true, false);
 				break;
 			case R.id.album_menu_play_next:
+				artistOverride = true;
 				downloadRecursively(entry.getId(), false, true, false, false, false, true);
 				break;
 			case R.id.album_menu_play_last:
+				artistOverride = true;
 				downloadRecursively(entry.getId(), false, true, false, false, false);
 				break;
 			case R.id.album_menu_download:
+				artistOverride = true;
 				downloadRecursively(entry.getId(), false, true, false, false, true);
 				break;
 			case R.id.album_menu_pin:
+				artistOverride = true;
 				downloadRecursively(entry.getId(), true, true, false, false, true);
 				break;
 			case R.id.album_menu_star:
@@ -289,6 +305,9 @@ public class SubsonicFragment extends Fragment {
 				break;
 			case R.id.album_menu_show_artist:
 				showArtist((MusicDirectory.Entry) selectedItem);
+				break;
+			case R.id.album_menu_share:
+				createShare(songs);
 				break;
 			case R.id.song_menu_play_now:
 				getDownloadService().clear();
@@ -325,6 +344,9 @@ public class SubsonicFragment extends Fragment {
 			case R.id.song_menu_stream_external:
 				streamExternalPlayer(entry);
 				break;
+			case R.id.song_menu_share:
+				createShare(songs);
+				break;
 			default:
 				return false;
 		}
@@ -349,6 +371,12 @@ public class SubsonicFragment extends Fragment {
 	            return result;
 	        }
 	    }
+	}
+	protected void maximizeIdGenerator(int id) {
+		final int result = nextGeneratedId.get();
+		if(id >= result) {
+			nextGeneratedId.set(id + 1);
+		}
 	}
 	public int getRootId() {
 		return rootView.getId();
@@ -577,7 +605,15 @@ public class SubsonicFragment extends Fragment {
 			@Override
 			protected Void doInBackground() throws Throwable {
 				MusicService musicService = MusicServiceFactory.getMusicService(context);
-				musicService.setStarred(entry.getId(), starred, context, null);
+				if(entry.isDirectory() && Util.isTagBrowsing(context) && !Util.isOffline(context)) {
+					if(entry.getParent() == null || entry.getArtist() == null) {
+						musicService.setStarred(null, Arrays.asList(entry.getId()), null, starred, context, null);
+					} else {
+						musicService.setStarred(null, null, Arrays.asList(entry.getId()), starred, context, null);
+					}
+				} else {
+					musicService.setStarred(Arrays.asList(entry.getId()), null, null, starred, context, null);
+				}
 				
 				// Make sure to clear parent cache
 				String s = Util.getRestUrl(context, null) + entry.getParent();
@@ -616,7 +652,11 @@ public class SubsonicFragment extends Fragment {
 			@Override
 			protected Void doInBackground() throws Throwable {
 				MusicService musicService = MusicServiceFactory.getMusicService(context);
-				musicService.setStarred(entry.getId(), starred, context, null);
+				if(Util.isTagBrowsing(context) && !Util.isOffline(context)) {
+					musicService.setStarred(null, Arrays.asList(entry.getId()), null, starred, context, null);
+				} else {
+					musicService.setStarred(Arrays.asList(entry.getId()), null, null, starred, context, null);
+				}
 				return null;
 			}
 
@@ -662,10 +702,15 @@ public class SubsonicFragment extends Fragment {
 			protected List<MusicDirectory.Entry> doInBackground() throws Throwable {
 				MusicService musicService = MusicServiceFactory.getMusicService(context);
 				MusicDirectory root;
-				if(isDirectory)
-					root = musicService.getMusicDirectory(id, name, false, context, this);
-				else
+				if(share != null) {
+					root = share.getMusicDirectory();
+				}
+				else if(isDirectory) {
+					root = getMusicDirectory(id, name, false, musicService, this);
+				}
+				else {
 					root = musicService.getPlaylist(true, id, name, context, this);
+				}
 				List<MusicDirectory.Entry> songs = new LinkedList<MusicDirectory.Entry>();
 				getSongsRecursively(root, songs);
 				return songs;
@@ -683,7 +728,14 @@ public class SubsonicFragment extends Fragment {
 				}
 				for (MusicDirectory.Entry dir : parent.getChildren(true, false)) {
 					MusicService musicService = MusicServiceFactory.getMusicService(context);
-					getSongsRecursively(musicService.getMusicDirectory(dir.getId(), dir.getTitle(), false, context, this), songs);
+
+					MusicDirectory musicDirectory;
+					if(Util.isTagBrowsing(context) && !Util.isOffline(context)) {
+						musicDirectory = musicService.getAlbum(dir.getId(), dir.getTitle(), false, context, this);
+					} else {
+						musicDirectory = musicService.getMusicDirectory(dir.getId(), dir.getTitle(), false, context, this);
+					}
+					getSongsRecursively(musicDirectory, songs);
 				}
 			}
 
@@ -705,10 +757,23 @@ public class SubsonicFragment extends Fragment {
 						downloadService.downloadBackground(songs, save);
 					}
 				}
+				artistOverride = false;
 			}
 		};
 
 		task.execute();
+	}
+
+	protected MusicDirectory getMusicDirectory(String id, String name, boolean refresh, MusicService service, ProgressListener listener) throws Exception {
+		if(Util.isTagBrowsing(context) && !Util.isOffline(context)) {
+			if(artist && !artistOverride) {
+				return service.getArtist(id, name, refresh, context, listener);
+			} else {
+				return service.getAlbum(id, name, refresh, context, listener);
+			}
+		} else {
+			return service.getMusicDirectory(id, name, refresh, context, listener);
+		}
 	}
 
 	protected void addToPlaylist(final List<MusicDirectory.Entry> songs) {
@@ -942,14 +1007,14 @@ public class SubsonicFragment extends Fragment {
 		if(!Util.isOffline(context) && song.getSuffix() != null) {
 			msg += "\nServer Format: " + song.getSuffix();
 			if(song.getBitRate() != null && song.getBitRate() != 0) {
-				msg += "\nServer Bitrate: " + song.getBitRate() + " kpbs";
+				msg += "\nServer Bitrate: " + song.getBitRate() + " kbps";
 			}
 		}
 		if(format != null && !"".equals(format)) {
 			msg += "\nCached Format: " + format;
 		}
 		if(bitrate != null && bitrate != 0) {
-			msg += "\nCached Bitrate: " + bitrate + " kpbs";
+			msg += "\nCached Bitrate: " + bitrate + " kbps";
 		}
 		if(size != 0) {
 			msg += "\nSize: " + Util.formatBytes(size);
@@ -1063,11 +1128,59 @@ public class SubsonicFragment extends Fragment {
 	public void showArtist(MusicDirectory.Entry entry) {
 		SubsonicFragment fragment = new SelectDirectoryFragment();
 		Bundle args = new Bundle();
-		args.putString(Constants.INTENT_EXTRA_NAME_ID, entry.getParent());
+		if(Util.isTagBrowsing(context)) {
+			args.putString(Constants.INTENT_EXTRA_NAME_ID, entry.getArtistId());
+		} else {
+			args.putString(Constants.INTENT_EXTRA_NAME_ID, entry.getParent());
+		}
 		args.putString(Constants.INTENT_EXTRA_NAME_NAME, entry.getArtist());
+		args.putBoolean(Constants.INTENT_EXTRA_NAME_ARTIST, true);
 		fragment.setArguments(args);
 
 		replaceFragment(fragment, getRootId(), true);
+	}
+
+	public void createShare(final List<MusicDirectory.Entry> entries) {
+		new LoadingTask<List<Share>>(context, true) {
+			@Override
+			protected List<Share> doInBackground() throws Throwable {
+				List<String> ids = new ArrayList<String>(entries.size());
+				for(MusicDirectory.Entry entry: entries) {
+					ids.add(entry.getId());
+				}
+
+				MusicService musicService = MusicServiceFactory.getMusicService(context);
+				return musicService.createShare(ids, null, 0L, context, this);
+			}
+
+			@Override
+			protected void done(final List<Share> shares) {
+				if(shares.size() > 0) {
+					Share share = shares.get(0);
+					shareExternal(share);
+				} else {
+					Util.toast(context, context.getResources().getString(R.string.playlist_error), false);
+				}
+			}
+
+			@Override
+			protected void error(Throwable error) {
+				String msg;
+				if (error instanceof OfflineException || error instanceof ServerTooOldException) {
+					msg = getErrorMessage(error);
+				} else {
+					msg = context.getResources().getString(R.string.playlist_error) + " " + getErrorMessage(error);
+				}
+
+				Util.toast(context, msg, false);
+			}
+		}.execute();
+	}
+	public void shareExternal(Share share) {
+		Intent intent = new Intent(Intent.ACTION_SEND);
+		intent.setType("text/plain");
+		intent.putExtra(Intent.EXTRA_TEXT, share.getUrl());
+		context.startActivity(Intent.createChooser(intent, context.getResources().getString(R.string.share_via)));
 	}
 	
 	public GestureDetector getGestureDetector() {

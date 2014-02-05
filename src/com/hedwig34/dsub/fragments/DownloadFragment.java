@@ -178,17 +178,21 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 		toggleListButton =rootView.findViewById(R.id.download_toggle_list);
 
 		starButton = (ImageButton)rootView.findViewById(R.id.download_star);
-		starButton.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				DownloadFile currentDownload = getDownloadService().getCurrentPlaying();
-				if (currentDownload != null) {
-					MusicDirectory.Entry currentSong = currentDownload.getSong();
-					toggleStarred(currentSong);
-					starButton.setImageResource(currentSong.isStarred() ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+		if(Util.getPreferences(context).getBoolean(Constants.PREFERENCES_KEY_MENU_STAR, true)) {
+			starButton.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					DownloadFile currentDownload = getDownloadService().getCurrentPlaying();
+					if (currentDownload != null) {
+						MusicDirectory.Entry currentSong = currentDownload.getSong();
+						toggleStarred(currentSong);
+						starButton.setImageResource(currentSong.isStarred() ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star_big_off);
+					}
 				}
-			}
-		});
+			});
+		} else {
+			starButton.setVisibility(View.GONE);
+		}
 
 		View.OnTouchListener touchListener = new View.OnTouchListener() {
 			@Override
@@ -485,6 +489,9 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 			visualizerButton.setVisibility(View.GONE);
 		} else {
 			visualizerView = new VisualizerView(context);
+			if(downloadService.getShowVisualization()) {
+				visualizerView.setActive(true);
+			}
 			visualizerViewLayout.addView(visualizerView, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, LinearLayout.LayoutParams.FILL_PARENT));
 		}
 
@@ -565,12 +572,19 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 				
 				Intent intent = new Intent(context, SubsonicFragmentActivity.class);
 				intent.putExtra(Constants.INTENT_EXTRA_VIEW_ALBUM, true);
-				intent.putExtra(Constants.INTENT_EXTRA_NAME_ID, entry.getParent());
+				if(Util.isTagBrowsing(context)) {
+					intent.putExtra(Constants.INTENT_EXTRA_NAME_ID, entry.getAlbumId());
+				} else {
+					intent.putExtra(Constants.INTENT_EXTRA_NAME_ID, entry.getParent());
+				}
 				intent.putExtra(Constants.INTENT_EXTRA_NAME_NAME, entry.getAlbum());
 				intent.putExtra(Constants.INTENT_EXTRA_FRAGMENT_TYPE, "Artist");
 				
 				if(entry.getGrandParent() != null) {
 					intent.putExtra(Constants.INTENT_EXTRA_NAME_PARENT_ID, entry.getGrandParent());
+					intent.putExtra(Constants.INTENT_EXTRA_NAME_PARENT_NAME, entry.getArtist());
+				} else if(Util.isTagBrowsing(context)) {
+					intent.putExtra(Constants.INTENT_EXTRA_NAME_PARENT_ID, entry.getArtistId());
 					intent.putExtra(Constants.INTENT_EXTRA_NAME_PARENT_NAME, entry.getArtist());
 				}
 				
@@ -876,10 +890,33 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 
 	protected void startTimer() {
 		View dialogView = context.getLayoutInflater().inflate(R.layout.start_timer, null);
-		final EditText lengthBox = (EditText)dialogView.findViewById(R.id.timer_length);
 
+		// Setup length label
+		final TextView lengthBox = (TextView) dialogView.findViewById(R.id.timer_length_label);
 		final SharedPreferences prefs = Util.getPreferences(context);
-		lengthBox.setText(prefs.getString(Constants.PREFERENCES_KEY_SLEEP_TIMER_DURATION, ""));
+		String lengthString = prefs.getString(Constants.PREFERENCES_KEY_SLEEP_TIMER_DURATION, "5");
+		int length = Integer.parseInt(lengthString);
+		lengthBox.setText(Util.formatDuration(length));
+
+		// Setup length slider
+		final SeekBar lengthBar = (SeekBar) dialogView.findViewById(R.id.timer_length_bar);
+		lengthBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+			@Override
+			public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+				if(fromUser) {
+					int length = getMinutes(progress);
+					lengthBox.setText(Util.formatDuration(length));
+				}
+			}
+
+			@Override
+			public void onStartTrackingTouch(SeekBar seekBar) {
+			}
+
+			@Override
+			public void onStopTrackingTouch(SeekBar seekBar) {
+			}
+		});
 
 		AlertDialog.Builder builder = new AlertDialog.Builder(context);
 		builder.setTitle(R.string.menu_set_timer)
@@ -887,13 +924,13 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 			.setPositiveButton(R.string.common_ok, new DialogInterface.OnClickListener() {
 				@Override
 				public void onClick(DialogInterface dialog, int id) {
-					String length = lengthBox.getText().toString();
+					int length = getMinutes(lengthBar.getProgress());
 
 					SharedPreferences.Editor editor = prefs.edit();
-					editor.putString(Constants.PREFERENCES_KEY_SLEEP_TIMER_DURATION, length);
+					editor.putString(Constants.PREFERENCES_KEY_SLEEP_TIMER_DURATION, Integer.toString(length));
 					editor.commit();
 
-					getDownloadService().setSleepTimerDuration(Integer.parseInt(length));
+					getDownloadService().setSleepTimerDuration(length);
 					getDownloadService().startSleepTimer();
 					context.supportInvalidateOptionsMenu();
 				}
@@ -901,6 +938,16 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 			.setNegativeButton(R.string.common_cancel, null);
 		AlertDialog dialog = builder.create();
 		dialog.show();
+	}
+
+	private int getMinutes(int progress) {
+		if(progress < 30) {
+			return progress + 1;
+		} else if(progress < 61) {
+			return (progress - 30) * 5 + getMinutes(29);
+		} else {
+			return (progress - 61) * 15 + getMinutes(60);
+		}
 	}
 
 	private void toggleFullscreenAlbumArt() {
@@ -1110,8 +1157,10 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 
 				switch (playerState) {
 					case DOWNLOADING:
-						long bytes = currentPlaying.getPartialFile().length();
-						statusTextView.setText(context.getResources().getString(R.string.download_playerstate_downloading, Util.formatLocalizedBytes(bytes, context)));
+						if(currentPlaying != null) {
+							long bytes = currentPlaying.getPartialFile().length();
+							statusTextView.setText(context.getResources().getString(R.string.download_playerstate_downloading, Util.formatLocalizedBytes(bytes, context)));
+						}
 						break;
 					case PREPARING:
 						statusTextView.setText(R.string.download_playerstate_buffering);
@@ -1268,19 +1317,16 @@ public class DownloadFragment extends SubsonicFragment implements OnGestureListe
 	@Override
 	public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
 		DownloadService downloadService = getDownloadService();
-		if (downloadService == null) {
+		if (downloadService == null || e1 == null || e2 == null) {
 			return false;
 		}
-		Log.d(TAG, "onFling");
 
 		// Right to Left swipe
 		if (e1.getX() - e2.getX() > swipeDistance && Math.abs(velocityX) > swipeVelocity) {
 			warnIfNetworkOrStorageUnavailable();
-			if (downloadService.getCurrentPlayingIndex() < downloadService.size() - 1) {
-				downloadService.next();
-				onCurrentChanged();
-				onProgressChanged();
-			}
+			downloadService.next();
+			onCurrentChanged();
+			onProgressChanged();
 			return true;
 		}
 

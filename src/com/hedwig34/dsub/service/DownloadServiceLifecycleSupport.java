@@ -222,7 +222,6 @@ public class DownloadServiceLifecycleSupport {
         executorService.shutdown();
         eventLooper.quit();
         serializeDownloadQueueNow();
-        downloadService.clear(false);
         downloadService.unregisterReceiver(ejectEventReceiver);
         downloadService.unregisterReceiver(headsetEventReceiver);
         downloadService.unregisterReceiver(intentReceiver);
@@ -260,6 +259,9 @@ public class DownloadServiceLifecycleSupport {
 		for (DownloadFile downloadFile : songs) {
 			state.songs.add(downloadFile.getSong());
 		}
+		for (DownloadFile downloadFile : downloadService.getToDelete()) {
+			state.toDelete.add(downloadFile.getSong());
+		}
 		state.currentPlayingIndex = downloadService.getCurrentPlayingIndex();
 		state.currentPlayingPosition = downloadService.getPlayerPosition();
 
@@ -285,7 +287,7 @@ public class DownloadServiceLifecycleSupport {
 			currentPlaying.renamePartial();
 		}
 
-        downloadService.restore(state.songs, state.currentPlayingIndex, state.currentPlayingPosition);
+        downloadService.restore(state.songs, state.toDelete, state.currentPlayingIndex, state.currentPlayingPosition);
     }
 
     private void handleKeyEvent(KeyEvent event) {
@@ -320,9 +322,7 @@ public class DownloadServiceLifecycleSupport {
 					break;
 				case RemoteControlClient.FLAG_KEY_MEDIA_NEXT:
 				case KeyEvent.KEYCODE_MEDIA_NEXT:
-					if (downloadService.getCurrentPlayingIndex() < downloadService.size() - 1) {
-						downloadService.next();
-					}
+					downloadService.next();
 					break;
 				case RemoteControlClient.FLAG_KEY_MEDIA_STOP:
 				case KeyEvent.KEYCODE_MEDIA_STOP:
@@ -378,9 +378,10 @@ public class DownloadServiceLifecycleSupport {
     }
 
     private static class State implements Serializable {
-        private static final long serialVersionUID = -6346438781062572270L;
+        private static final long serialVersionUID = -6346438781062572271L;
 
         private List<MusicDirectory.Entry> songs = new ArrayList<MusicDirectory.Entry>();
+		private List<MusicDirectory.Entry> toDelete = new ArrayList<MusicDirectory.Entry>();
         private int currentPlayingIndex;
         private int currentPlayingPosition;
 		private boolean renameCurrent = false;

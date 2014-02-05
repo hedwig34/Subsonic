@@ -27,8 +27,6 @@ import org.apache.http.HttpResponse;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.support.v4.util.LruCache;
-import android.util.Log;
 
 import com.hedwig34.dsub.domain.Bookmark;
 import com.hedwig34.dsub.domain.ChatMessage;
@@ -60,18 +58,16 @@ public class CachedMusicService implements MusicService {
     private static final int TTL_MUSIC_DIR = 5 * 60; // Five minutes
 
 	private final RESTMusicService musicService;
-    private final LruCache<String, TimeLimitedCache<MusicDirectory>> cachedMusicDirectories;
     private final TimeLimitedCache<Boolean> cachedLicenseValid = new TimeLimitedCache<Boolean>(120, TimeUnit.SECONDS);
     private final TimeLimitedCache<Indexes> cachedIndexes = new TimeLimitedCache<Indexes>(60 * 60, TimeUnit.SECONDS);
     private final TimeLimitedCache<List<Playlist>> cachedPlaylists = new TimeLimitedCache<List<Playlist>>(3600, TimeUnit.SECONDS);
     private final TimeLimitedCache<List<MusicFolder>> cachedMusicFolders = new TimeLimitedCache<List<MusicFolder>>(10 * 3600, TimeUnit.SECONDS);
-	private final TimeLimitedCache<List<Genre>> cachedGenres = new TimeLimitedCache<List<Genre>>(10 * 3600, TimeUnit.SECONDS);
 	private final TimeLimitedCache<List<PodcastChannel>> cachedPodcastChannels = new TimeLimitedCache<List<PodcastChannel>>(10 * 3600, TimeUnit.SECONDS);
     private String restUrl;
+	private boolean isTagBrowsing = false;
 
     public CachedMusicService(RESTMusicService musicService) {
         this.musicService = musicService;
-        cachedMusicDirectories = new LruCache<String, TimeLimitedCache<MusicDirectory>>(MUSIC_DIR_CACHE_SIZE);
     }
 
     @Override
@@ -85,7 +81,16 @@ public class CachedMusicService implements MusicService {
         checkSettingsChanged(context);
         Boolean result = cachedLicenseValid.get();
         if (result == null) {
-            result = musicService.isLicenseValid(context, progressListener);
+			result = FileUtil.deserialize(context, getCacheName(context, "license"), Boolean.class);
+
+			if(result == null) {
+            	result = musicService.isLicenseValid(context, progressListener);
+
+				// Only save a copy license is valid
+				if(result == true) {
+					FileUtil.serialize(context, (Boolean) result, getCacheName(context, "license"));
+				}
+			}
             cachedLicenseValid.set(result, result ? 30L * 60L : 2L * 60L, TimeUnit.SECONDS);
         }
         return result;
@@ -118,7 +123,6 @@ public class CachedMusicService implements MusicService {
         if (refresh) {
             cachedIndexes.clear();
             cachedMusicFolders.clear();
-            cachedMusicDirectories.evictAll();
         }
         Indexes result = cachedIndexes.get();
         if (result == null) {
@@ -130,26 +134,53 @@ public class CachedMusicService implements MusicService {
 
     @Override
     public MusicDirectory getMusicDirectory(String id, String name, boolean refresh, Context context, ProgressListener progressListener) throws Exception {
-        checkSettingsChanged(context);
-        TimeLimitedCache<MusicDirectory> cache = refresh ? null : cachedMusicDirectories.get(id);
-        MusicDirectory dir = cache == null ? null : cache.get();
-        if (dir == null) {
-        	if(!refresh) {
-        		dir = FileUtil.deserialize(context, getCacheName(context, "directory", id), MusicDirectory.class);
-        	}
-        	
-        	if(dir == null) {
-            	dir = musicService.getMusicDirectory(id, name, refresh, context, progressListener);
-            	FileUtil.serialize(context, dir, getCacheName(context, "directory", id));
-        	}
-            cache = new TimeLimitedCache<MusicDirectory>(TTL_MUSIC_DIR, TimeUnit.SECONDS);
-            cache.set(dir);
-            cachedMusicDirectories.put(id, cache);
-        }
-        return dir;
+		MusicDirectory dir = null;
+
+		if(!refresh) {
+			dir = FileUtil.deserialize(context, getCacheName(context, "directory", id), MusicDirectory.class);
+		}
+
+		if(dir == null) {
+			dir = musicService.getMusicDirectory(id, name, refresh, context, progressListener);
+			FileUtil.serialize(context, dir, getCacheName(context, "directory", id));
+		}
+
+		return dir;
     }
 
-    @Override
+	@Override
+	public MusicDirectory getArtist(String id, String name, boolean refresh, Context context, ProgressListener progressListener) throws Exception {
+		MusicDirectory dir = null;
+
+		if(!refresh) {
+			dir = FileUtil.deserialize(context, getCacheName(context, "artist", id), MusicDirectory.class);
+		}
+
+		if(dir == null) {
+			dir = musicService.getArtist(id, name, refresh, context, progressListener);
+			FileUtil.serialize(context, dir, getCacheName(context, "artist", id));
+		}
+
+		return dir;
+	}
+
+	@Override
+	public MusicDirectory getAlbum(String id, String name, boolean refresh, Context context, ProgressListener progressListener) throws Exception {
+		MusicDirectory dir = null;
+
+		if(!refresh) {
+			dir = FileUtil.deserialize(context, getCacheName(context, "album", id), MusicDirectory.class);
+		}
+
+		if(dir == null) {
+			dir = musicService.getAlbum(id, name, refresh, context, progressListener);
+			FileUtil.serialize(context, dir, getCacheName(context, "album", id));
+		}
+
+		return dir;
+	}
+
+	@Override
     public SearchResult search(SearchCritera criteria, Context context, ProgressListener progressListener) throws Exception {
         return musicService.search(criteria, context, progressListener);
     }
@@ -253,8 +284,8 @@ public class CachedMusicService implements MusicService {
     }
 
     @Override
-    public Bitmap getCoverArt(Context context, MusicDirectory.Entry entry, int size, int saveSize, ProgressListener progressListener) throws Exception {
-        return musicService.getCoverArt(context, entry, size, saveSize, progressListener);
+    public Bitmap getCoverArt(Context context, MusicDirectory.Entry entry, int size, ProgressListener progressListener) throws Exception {
+        return musicService.getCoverArt(context, entry, size, progressListener);
     }
 
     @Override
@@ -318,13 +349,28 @@ public class CachedMusicService implements MusicService {
     }
     
 	@Override
-	public void setStarred(String id, boolean starred, Context context, ProgressListener progressListener) throws Exception {
-		musicService.setStarred(id, starred, context, progressListener);
+	public void setStarred(List<String> id, List<String> artistId, List<String> albumId, boolean starred, Context context, ProgressListener progressListener) throws Exception {
+		musicService.setStarred(id, artistId, albumId, starred, context, progressListener);
 	}
 	
 	@Override
 	public List<Share> getShares(Context context, ProgressListener progressListener) throws Exception {
 		return musicService.getShares(context, progressListener);	
+	}
+
+	@Override
+	public List<Share> createShare(List<String> ids, String description, Long expires, Context context, ProgressListener progressListener) throws Exception {
+		return musicService.createShare(ids, description, expires, context, progressListener);
+	}
+
+	@Override
+	public void deleteShare(String id, Context context, ProgressListener progressListener) throws Exception {
+		musicService.deleteShare(id, context, progressListener);
+	}
+
+	@Override
+	public void updateShare(String id, String description, Long expires, Context context, ProgressListener progressListener) throws Exception {
+		musicService.updateShare(id, description, expires, context, progressListener);
 	}
 
 	@Override
@@ -339,19 +385,15 @@ public class CachedMusicService implements MusicService {
 	
 	@Override
 	public List<Genre> getGenres(boolean refresh, Context context, ProgressListener progressListener) throws Exception {
-		checkSettingsChanged(context);
-		List<Genre> result = refresh ? null : cachedGenres.get();
+		List<Genre> result = null;
 
-		if (result == null) {
-			if(!refresh) {
-				result = FileUtil.deserialize(context, getCacheName(context, "genre"), ArrayList.class);
-			}
-			
-			if(result == null) {
-				result = musicService.getGenres(refresh, context, progressListener);
-				FileUtil.serialize(context, new ArrayList<Genre>(result), getCacheName(context, "genre"));
-			}
-			cachedGenres.set(result);
+		if(!refresh) {
+			result = FileUtil.deserialize(context, getCacheName(context, "genre"), ArrayList.class);
+		}
+
+		if(result == null) {
+			result = musicService.getGenres(refresh, context, progressListener);
+			FileUtil.serialize(context, new ArrayList<Genre>(result), getCacheName(context, "genre"));
 		}
 
 		return result;
@@ -384,27 +426,19 @@ public class CachedMusicService implements MusicService {
 	
 	@Override
 	public MusicDirectory getPodcastEpisodes(boolean refresh, String id, Context context, ProgressListener progressListener) throws Exception {
-		checkSettingsChanged(context);
 		String altId = "p-" + id;
-		TimeLimitedCache<MusicDirectory> cache = refresh ? null : cachedMusicDirectories.get(altId);
-		MusicDirectory result = (cache == null) ? null : cache.get();
+		MusicDirectory result = null;
+
+		if(!refresh) {
+			result = FileUtil.deserialize(context, getCacheName(context, "directory", altId), MusicDirectory.class, 10);
+		}
 
 		if(result == null) {
-			if(!refresh) {
-				result = FileUtil.deserialize(context, getCacheName(context, "directory", altId), MusicDirectory.class, 10);
-			}
-
-			if(result == null) {
-				result = musicService.getPodcastEpisodes(refresh, id, context, progressListener);
-				FileUtil.serialize(context, result, getCacheName(context, "directory", altId));
-			}
-			cache = new TimeLimitedCache<MusicDirectory>(TTL_MUSIC_DIR, TimeUnit.SECONDS);
-			cache.set(result);
-			cachedMusicDirectories.put(altId, cache);
+			result = musicService.getPodcastEpisodes(refresh, id, context, progressListener);
+			FileUtil.serialize(context, result, getCacheName(context, "directory", altId));
 		}
+
 		return result;
-
-
 	}
 	
 	@Override
@@ -477,14 +511,15 @@ public class CachedMusicService implements MusicService {
 
     private void checkSettingsChanged(Context context) {
         String newUrl = musicService.getRestUrl(context, null, false);
-        if (!Util.equals(newUrl, restUrl)) {
+		boolean newIsTagBrowsing = Util.isTagBrowsing(context);
+        if (!Util.equals(newUrl, restUrl) || isTagBrowsing != newIsTagBrowsing) {
             cachedMusicFolders.clear();
-            cachedMusicDirectories.evictAll();
             cachedLicenseValid.clear();
             cachedIndexes.clear();
             cachedPlaylists.clear();
 			cachedPodcastChannels.clear();
             restUrl = newUrl;
+			isTagBrowsing = newIsTagBrowsing;
         }
     }
 }

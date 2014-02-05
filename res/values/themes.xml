@@ -22,9 +22,10 @@
 		<item name="select_server">@drawable/main_select_server_light</item>
 		<item name="downloading">@drawable/downloading_light</item>
 		<item name="bookmark">@drawable/ic_menu_bookmark_light</item>
+		<item name="share">@drawable/ic_menu_share_light</item>
 		<item name="drawerItemsIcons">@array/drawerItemIconsLight</item>
 		<item name="android:textViewStyle">@style/DSub.TextViewStyle</item>
-		<item name="android:buttonStyle">@style/DSub.ButtonStyle</item>
+		<item name="android:buttonStyle">@style/DSub.ButtonStyle.Light</item>
 	</style>
 	<style name="Theme.DSub.Dark" parent="@style/Theme.AppCompat">
 		<item name="actionBarStyle">@style/Widget.DSub.ActionBarStyle.Dark</item>
@@ -49,9 +50,10 @@
 		<item name="select_server">@drawable/main_select_server_dark</item>
 		<item name="downloading">@drawable/downloading_dark</item>
 		<item name="bookmark">@drawable/ic_menu_bookmark_dark</item>
+		<item name="share">@drawable/ic_menu_share_dark</item>
 		<item name="drawerItemsIcons">@array/drawerItemIconsDark</item>
 		<item name="android:textViewStyle">@style/DSub.TextViewStyle</item>
-		<item name="android:buttonStyle">@style/DSub.ButtonStyle</item>
+		<item name="android:buttonStyle">@style/DSub.ButtonStyle.Dark</item>
 	</style>
 	<style name="Theme.DSub.Black" parent="Theme.DSub.Dark">
 		<item name="android:windowBackground">@android:color/black</item>
@@ -79,9 +81,10 @@
 		<item name="select_server">@drawable/main_select_server_dark</item>
 		<item name="downloading">@drawable/downloading_dark</item>
 		<item name="bookmark">@drawable/ic_menu_bookmark_dark</item>
+		<item name="share">@drawable/ic_menu_share_dark</item>
 		<item name="drawerItemsIcons">@array/drawerItemIconsDark</item>
 		<item name="android:textViewStyle">@style/DSub.TextViewStyle</item>
-		<item name="android:buttonStyle">@style/DSub.ButtonStyle</item>
+		<item name="android:buttonStyle">@style/DSub.ButtonStyle.Dark</item>
 	</style>
 	
 	<style name="Widget.DSub.ActionBarStyle.Light" parent="Widget.AppCompat.Light.ActionBar.Solid">
@@ -108,6 +111,8 @@
 	<style name="DSub.TextViewStyle" parent="android:Widget.TextView">
 	</style>
 
-	<style name="DSub.ButtonStyle" parent="android:Widget.Holo.Button">
+	<style name="DSub.ButtonStyle.Dark" parent="android:Widget.Holo.Button">
+	</style>
+	<style name="DSub.ButtonStyle.Light" parent="android:Widget.Holo.Light.Button">
 	</style>
 </resources>

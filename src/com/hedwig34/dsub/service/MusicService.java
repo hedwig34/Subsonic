@@ -57,6 +57,10 @@ public interface MusicService {
 
     MusicDirectory getMusicDirectory(String id, String name, boolean refresh, Context context, ProgressListener progressListener) throws Exception;
 
+	MusicDirectory getArtist(String id, String name, boolean refresh, Context context, ProgressListener progressListener) throws Exception;
+
+	MusicDirectory getAlbum(String id, String name, boolean refresh, Context context, ProgressListener progressListener) throws Exception;
+
     SearchResult search(SearchCritera criteria, Context context, ProgressListener progressListener) throws Exception;
 
     MusicDirectory getStarredList(Context context, ProgressListener progressListener) throws Exception;
@@ -87,7 +91,7 @@ public interface MusicService {
 
     MusicDirectory getRandomSongs(int size, String folder, String genre, String startYear, String endYear, Context context, ProgressListener progressListener) throws Exception;
 
-    Bitmap getCoverArt(Context context, MusicDirectory.Entry entry, int size, int saveSize, ProgressListener progressListener) throws Exception;
+    Bitmap getCoverArt(Context context, MusicDirectory.Entry entry, int size, ProgressListener progressListener) throws Exception;
 
     HttpResponse getDownloadInputStream(Context context, MusicDirectory.Entry song, long offset, int maxBitrate, CancellableTask task) throws Exception;
 
@@ -113,9 +117,15 @@ public interface MusicService {
 
     RemoteStatus setJukeboxGain(float gain, Context context, ProgressListener progressListener) throws Exception;
     
-    void setStarred(String id, boolean starred, Context context, ProgressListener progressListener) throws Exception;
+    void setStarred(List<String> id, List<String> artistId, List<String> albumId, boolean starred, Context context, ProgressListener progressListener) throws Exception;
 	
 	List<Share> getShares(Context context, ProgressListener progressListener) throws Exception;
+
+	List<Share> createShare(List<String> ids, String description, Long expires, Context context, ProgressListener progressListener) throws Exception;
+
+	void deleteShare(String id, Context context, ProgressListener progressListener) throws Exception;
+
+	void updateShare(String id, String description, Long expires, Context context, ProgressListener progressListener) throws Exception;
     
     List<ChatMessage> getChatMessages(Long since, Context context, ProgressListener progressListener) throws Exception;
     
